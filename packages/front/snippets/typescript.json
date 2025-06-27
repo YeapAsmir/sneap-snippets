@@ -1,0 +1,35 @@
+{
+  "Interface": {
+    "prefix": "yint",
+    "body": [
+      "interface ${1:InterfaceName} {",
+      "\t${2:property}: ${3:type};",
+      "}"
+    ],
+    "description": "Create a TypeScript interface"
+  },
+  "Type": {
+    "prefix": "ytype",
+    "body": ["type ${1:TypeName} = ${2:type};"],
+    "description": "Create a TypeScript type alias"
+  },
+  "Enum": {
+    "prefix": "yenum",
+    "body": [
+      "enum ${1:EnumName} {",
+      "\t${2:VALUE} = '${3:value}',",
+      "}"
+    ],
+    "description": "Create a TypeScript enum"
+  },
+  "Generic Function": {
+    "prefix": "ygen",
+    "body": [
+      "function ${1:functionName}<T>(${2:param}: T): ${3:T} {",
+      "\t${4:// implementation}",
+      "\treturn ${2:param};",
+      "}"
+    ],
+    "description": "Create a generic function"
+  }
+}

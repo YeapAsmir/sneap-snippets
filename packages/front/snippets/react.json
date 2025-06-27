@@ -1,0 +1,89 @@
+{
+  "React Functional Component": {
+    "prefix": "yrfc",
+    "body": [
+      "import React from 'react';",
+      "",
+      "const ${1:ComponentName} = () => {",
+      "\treturn (",
+      "\t\t<div>",
+      "\t\t\t${2:// Component content}",
+      "\t\t</div>",
+      "\t);",
+      "};",
+      "",
+      "export default ${1:ComponentName};"
+    ],
+    "description": "Create a React functional component"
+  },
+  "React Hook - useState": {
+    "prefix": "yus",
+    "body": [
+      "const [${1:state}, set${1/(.*)/${1:/capitalize}/}] = useState(${2:initialValue});"
+    ],
+    "description": "Create useState hook"
+  },
+  "React Hook - useEffect": {
+    "prefix": "yue",
+    "body": [
+      "useEffect(() => {",
+      "\t${1:// effect}",
+      "\treturn () => {",
+      "\t\t${2:// cleanup}",
+      "\t};",
+      "}, [${3:dependencies}]);"
+    ],
+    "description": "Create useEffect hook"
+  },
+  "Custom Hook": {
+    "prefix": "yhook",
+    "body": [
+      "import { useState, useEffect } from 'react';",
+      "",
+      "const use${1:HookName} = (${2:params}) => {",
+      "\tconst [${3:state}, set${3/(.*)/${1:/capitalize}/}] = useState(${4:initialValue});",
+      "",
+      "\tuseEffect(() => {",
+      "\t\t${5:// Hook logic}",
+      "\t}, [${6:dependencies}]);",
+      "",
+      "\treturn { ${3:state}, set${3/(.*)/${1:/capitalize}/} };",
+      "};",
+      "",
+      "export default use${1:HookName};"
+    ],
+    "description": "Create a custom React hook"
+  },
+  "React Context": {
+    "prefix": "yctx",
+    "body": [
+      "import React, { createContext, useContext, useState } from 'react';",
+      "",
+      "const ${1:Context}Context = createContext();",
+      "",
+      "export const use${1:Context} = () => {",
+      "\tconst context = useContext(${1:Context}Context);",
+      "\tif (!context) {",
+      "\t\tthrow new Error('use${1:Context} must be used within ${1:Context}Provider');",
+      "\t}",
+      "\treturn context;",
+      "};",
+      "",
+      "export const ${1:Context}Provider = ({ children }) => {",
+      "\tconst [${2:state}, set${2/(.*)/${1:/capitalize}/}] = useState(${3:initialValue});",
+      "",
+      "\tconst value = {",
+      "\t\t${2:state},",
+      "\t\tset${2/(.*)/${1:/capitalize}/}",
+      "\t};",
+      "",
+      "\treturn (",
+      "\t\t<${1:Context}Context.Provider value={value}>",
+      "\t\t\t{children}",
+      "\t\t</${1:Context}Context.Provider>",
+      "\t);",
+      "};"
+    ],
+    "description": "Create a React Context with Provider and Hook"
+  }
+}
