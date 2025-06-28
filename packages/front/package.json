@@ -28,6 +28,16 @@
         "language": "typescriptreact",
         "path": "./snippets/react.json"
       }
+    ],
+    "commands": [
+      {
+        "command": "yeap-front-snippets.refreshSnippets",
+        "title": "Yeap Snippets: Refresh from Server"
+      },
+      {
+        "command": "yeap-front-snippets.insertSnippet",
+        "title": "Yeap Snippets: Show Info"
+      }
     ]
   },
   "scripts": {

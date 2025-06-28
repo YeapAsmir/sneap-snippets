@@ -1,7 +1,14 @@
 import fastify from 'fastify';
+import cors from '@fastify/cors';
+import { snippets } from './snippets';
 
 const server = fastify({
   logger: true
+});
+
+server.register(cors, {
+  origin: true,
+  credentials: true
 });
 
 server.get('/', async (request, reply) => {
@@ -10,6 +17,14 @@ server.get('/', async (request, reply) => {
 
 server.get('/health', async (request, reply) => {
   return { status: 'ok' };
+});
+
+server.get('/api/snippets', async (request, reply) => {
+  return {
+    success: true,
+    data: snippets,
+    count: snippets.length
+  };
 });
 
 const start = async () => {
