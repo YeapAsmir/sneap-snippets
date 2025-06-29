@@ -15,7 +15,7 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@yeap-front-snippets/*": ["packages/*/src"]
+      "@sneap-front-snippets/*": ["packages/*/src"]
     }
   },
   "references": [

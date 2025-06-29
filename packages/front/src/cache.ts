@@ -17,7 +17,7 @@ interface StoredCache {
 export class SnippetCache {
     private memoryCache: Map<string, CachedSnippet[]> = new Map();
     private context: vscode.ExtensionContext | null = null;
-    private readonly STORAGE_KEY = 'yeapSnippetsCache';
+    private readonly STORAGE_KEY = 'sneapSnippetsCache';
     private readonly MEMORY_LIMIT = 100;
     private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
     private readonly STORAGE_LIMIT = 5000;

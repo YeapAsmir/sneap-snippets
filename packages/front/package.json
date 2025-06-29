@@ -1,7 +1,7 @@
 {
-  "name": "yeap-front-snippets",
-  "displayName": "Yeap Front Snippets",
-  "description": "Frontend snippets for Yeap development",
+  "name": "sneap-extension",
+  "displayName": "Sneap Front Snippets",
+  "description": "Frontend snippets for Sneap development",
   "version": "0.0.1",
   "publisher": "asmir",
   "engines": {
@@ -20,28 +20,28 @@
   "contributes": {
     "commands": [
       {
-        "command": "yeap-front-snippets.refreshSnippets",
-        "title": "Yeap Snippets: Refresh from Server"
+        "command": "sneap.refreshSnippets",
+        "title": "Sneap: Refresh from Server"
       },
       {
-        "command": "yeap-front-snippets.insertSnippet",
-        "title": "Yeap Snippets: Show Info"
+        "command": "sneap.insertSnippet",
+        "title": "Sneap: Show Info"
       },
       {
-        "command": "yeap-front-snippets.clearCache",
-        "title": "Yeap Snippets: Clear Cache"
+        "command": "sneap.clearCache",
+        "title": "Sneap: Clear Cache"
       },
       {
-        "command": "yeap-front-snippets.showUserStats",
-        "title": "Yeap Snippets: Show My Stats"
+        "command": "sneap.showUserStats",
+        "title": "Sneap: Show My Stats"
       },
       {
-        "command": "yeap-front-snippets.configureApiKey",
-        "title": "Yeap Snippets: Configure API Key"
+        "command": "sneap.configureApiKey",
+        "title": "Sneap: Configure API Key"
       },
       {
-        "command": "yeap-front-snippets.resetApiKey",
-        "title": "Yeap Snippets: Reset API Key"
+        "command": "sneap.resetApiKey",
+        "title": "Sneap: Reset API Key"
       }
     ]
   },

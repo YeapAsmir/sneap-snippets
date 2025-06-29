@@ -10,15 +10,15 @@ import { UserService }               from './services/user';
 
 function createStatusBarItem(): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.command = 'yeap-front-snippets.refreshSnippets';
-    statusBarItem.text = '$(sync) Yeap Snippets';
+    statusBarItem.command = 'sneap.refreshSnippets';
+    statusBarItem.text = '$(sync) Sneap';
     statusBarItem.tooltip = 'Click to refresh snippets from server';
     statusBarItem.show();
     return statusBarItem;
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Yeap Front Snippets is now active!');
+    console.log('Sneap Front Snippets is now active!');
 
     // Initialize authentication first
     const authService = new AuthService();
@@ -50,11 +50,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     if (!isAuthenticated) {
         vscode.window.showWarningMessage(
-            'Yeap Snippets: API key required',
+            'Sneap: API key required',
             'Configure now'
         ).then(selection => {
             if (selection === 'Configure now') {
-                vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
+                vscode.commands.executeCommand('sneap.configureApiKey');
             }
         });
         
@@ -78,10 +78,10 @@ export async function activate(context: vscode.ExtensionContext) {
         // Commands already registered during CommandManager creation
         
         const statusBarItem = createStatusBarItem();
-        statusBarItem.text = `$(check) Yeap Snippets (${authService.getUserPrefix()})`;
+        statusBarItem.text = `$(check) Sneap (${authService.getUserPrefix()})`;
         statusBarItem.tooltip = `Connected as ${authService.getUserPrefix()} - Click to refresh`;
 
-        vscode.window.setStatusBarMessage(`Yeap Snippets: ${cachedSnippets.length} snippets loaded!`, 3000);
+        vscode.window.setStatusBarMessage(`Sneap: ${cachedSnippets.length} snippets loaded!`, 3000);
         context.subscriptions.push(provider, statusBarItem);
         
     } catch (error: any) {
@@ -93,7 +93,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 'Reconfigure'
             ).then(selection => {
                 if (selection === 'Reconfigure') {
-                    vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
+                    vscode.commands.executeCommand('sneap.configureApiKey');
                 }
             });
             return;

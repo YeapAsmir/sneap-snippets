@@ -7,7 +7,7 @@ export class AuthService {
 
     async initialize(context: vscode.ExtensionContext): Promise<boolean> {
         this.context = context;
-        this.apiKey = context.globalState.get('yeap-api-key') || '';
+        this.apiKey = context.globalState.get('sneap-api-key') || '';
         
         // Just return whether we have a key, don't auto-prompt
         return this.apiKey.length > 0;
@@ -15,8 +15,8 @@ export class AuthService {
 
     async promptForApiKey(): Promise<boolean> {
         const apiKey = await vscode.window.showInputBox({
-            prompt: 'Enter your Yeap Snippets API key',
-            placeHolder: 'ex: yeap_123456789',
+            prompt: 'Enter your Sneap API key',
+            placeHolder: 'ex: sneap_123456789',
             ignoreFocusOut: true,
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
@@ -48,7 +48,7 @@ export class AuthService {
     async setApiKey(apiKey: string): Promise<void> {
         this.apiKey = apiKey;
         if (this.context) {
-            await this.context.globalState.update('yeap-api-key', apiKey);
+            await this.context.globalState.update('sneap-api-key', apiKey);
         }
     }
 
@@ -59,7 +59,7 @@ export class AuthService {
     async clearApiKey(): Promise<void> {
         this.apiKey = '';
         if (this.context) {
-            await this.context.globalState.update('yeap-api-key', undefined);
+            await this.context.globalState.update('sneap-api-key', undefined);
         }
     }
 

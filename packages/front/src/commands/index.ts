@@ -35,37 +35,37 @@ export class CommandManager {
     registerCommands(context: vscode.ExtensionContext): void {
         console.log('CommandManager: Registering commands...');
         const refreshCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.refreshSnippets', 
+            'sneap-front-snippets.refreshSnippets', 
             this.handleRefreshSnippets.bind(this)
         );
 
         const insertSnippetCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.insertSnippet', 
+            'sneap-front-snippets.insertSnippet', 
             this.handleInsertSnippet.bind(this)
         );
 
         const clearCacheCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.clearCache', 
+            'sneap-front-snippets.clearCache', 
             this.handleClearCache.bind(this)
         );
 
         const trackUsageCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.trackUsage', 
+            'sneap-front-snippets.trackUsage', 
             this.handleTrackUsage.bind(this)
         );
 
         const showUserStatsCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.showUserStats', 
+            'sneap-front-snippets.showUserStats', 
             this.handleShowUserStats.bind(this)
         );
 
         const configureApiKeyCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.configureApiKey',
+            'sneap-front-snippets.configureApiKey',
             this.handleConfigureApiKey.bind(this)
         );
 
         const resetApiKeyCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.resetApiKey',
+            'sneap-front-snippets.resetApiKey',
             this.handleResetApiKey.bind(this)
         );
 
@@ -93,7 +93,7 @@ export class CommandManager {
     private handleInsertSnippet(): void {
         const stats = this.snippetCache.getStats();
         vscode.window.showInformationMessage(
-            `Yeap Snippets: ${this.cachedSnippets.length} total, ${stats.memorySize} in memory cache, Storage: ${stats.storageConnected ? 'Connected' : 'Offline'}`
+            `Sneap: ${this.cachedSnippets.length} total, ${stats.memorySize} in memory cache, Storage: ${stats.storageConnected ? 'Connected' : 'Offline'}`
         );
     }
 

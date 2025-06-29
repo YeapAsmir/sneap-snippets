@@ -130,7 +130,7 @@ server.get('/admin/index.html', { preHandler: adminAuth }, async (request, reply
 
 server.get('/', async (request, reply) => {
   return { 
-    hello: 'Yeap Snippets API',
+    hello: 'Sneap API',
     version: '2.0.0',
     features: ['Drizzle ORM', 'SQLite', 'Trie Search', 'Usage Analytics', 'Personalization']
   };
@@ -528,7 +528,7 @@ process.on('SIGTERM', async () => {
 const start = async () => {
   try {
     await server.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('🚀 Yeap Snippets Server running on http://localhost:3000');
+    console.log('🚀 Sneap Server running on http://localhost:3000');
     console.log('💾 Database: Drizzle ORM + SQLite');
     console.log('🔍 Search: Trie + Full-text');
     console.log('📊 Analytics: Enabled');

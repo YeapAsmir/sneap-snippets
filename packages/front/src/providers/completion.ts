@@ -43,7 +43,7 @@ export class SnippetCompletionProvider implements vscode.CompletionItemProvider 
         
         // Add usage tracking on completion
         completion.command = {
-            command: 'yeap-front-snippets.trackUsage',
+            command: 'sneap-front-snippets.trackUsage',
             title: 'Track Usage',
             arguments: [snippet.id, languageId, Date.now()]
         };

@@ -8,7 +8,7 @@ export interface Snippet {
 
 export const snippets: Snippet[] = [
   {
-    name: "Yeap API Call",
+    name: "Sneap API Call",
     prefix: "yapi",
     body: [
       "const ${1:fetchData} = async () => {",
@@ -26,7 +26,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript", "javascriptreact", "typescriptreact"]
   },
   {
-    name: "Yeap Error Boundary",
+    name: "Sneap Error Boundary",
     prefix: "yerr",
     body: [
       "class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {",
@@ -55,7 +55,7 @@ export const snippets: Snippet[] = [
     scope: ["javascriptreact", "typescriptreact"]
   },
   {
-    name: "Yeap Custom Hook with Fetch",
+    name: "Sneap Custom Hook with Fetch",
     prefix: "yfetch",
     body: [
       "const use${1:FetchData} = (url: string) => {",
@@ -87,7 +87,7 @@ export const snippets: Snippet[] = [
     scope: ["typescript", "typescriptreact"]
   },
   {
-    name: "Yeap Redux Slice",
+    name: "Sneap Redux Slice",
     prefix: "yslice",
     body: [
       "import { createSlice, PayloadAction } from '@reduxjs/toolkit';",
@@ -117,7 +117,7 @@ export const snippets: Snippet[] = [
     scope: ["typescript", "typescriptreact"]
   },
   {
-    name: "Yeap Express Route",
+    name: "Sneap Express Route",
     prefix: "yroute",
     body: [
       "router.${1|get,post,put,delete,patch|}('/${2:path}', async (req, res) => {",
@@ -139,7 +139,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript"]
   },
   {
-    name: "Yeap Test Suite",
+    name: "Sneap Test Suite",
     prefix: "ytest",
     body: [
       "describe('${1:Component/Function}', () => {",
@@ -162,7 +162,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript", "javascriptreact", "typescriptreact"]
   },
   {
-    name: "Yeap Styled Component",
+    name: "Sneap Styled Component",
     prefix: "ystyled",
     body: [
       "import styled from 'styled-components';",
@@ -185,7 +185,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript", "javascriptreact", "typescriptreact"]
   },
   {
-    name: "Yeap GraphQL Query",
+    name: "Sneap GraphQL Query",
     prefix: "ygql",
     body: [
       "const ${1:GET_DATA} = gql`",
@@ -202,7 +202,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript", "javascriptreact", "typescriptreact"]
   },
   {
-    name: "Yeap Async Handler",
+    name: "Sneap Async Handler",
     prefix: "yasync",
     body: [
       "const ${1:asyncHandler} = async (${2:params}) => {",
@@ -231,7 +231,7 @@ export const snippets: Snippet[] = [
     scope: ["javascript", "typescript"]
   },
   {
-    name: "Yeap Form Handler",
+    name: "Sneap Form Handler",
     prefix: "yform",
     body: [
       "const handle${1:Submit} = (event: React.FormEvent<HTMLFormElement>) => {",

@@ -1,5 +1,5 @@
 {
-  "name": "@yeap-front-snippets/fastify-app",
+  "name": "@sneap-front-snippets/fastify-app",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
