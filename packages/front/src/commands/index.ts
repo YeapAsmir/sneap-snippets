@@ -74,6 +74,11 @@ export class CommandManager {
             this.handleCreateSnippetFromSelection.bind(this)
         );
 
+        const deleteSnippetByNameCommand = vscode.commands.registerCommand(
+            'sneap.deleteSnippetByName',
+            this.handleDeleteSnippetByName.bind(this)
+        );
+
         context.subscriptions.push(
             refreshCommand,
             insertSnippetCommand,
@@ -82,7 +87,8 @@ export class CommandManager {
             showUserStatsCommand,
             configureApiKeyCommand,
             resetApiKeyCommand,
-            createSnippetFromSelectionCommand
+            createSnippetFromSelectionCommand,
+            deleteSnippetByNameCommand
         );
     }
 
@@ -202,15 +208,7 @@ export class CommandManager {
         const scope = this.getSnippetScope(fileExtension);
 
         try {
-            // Prompt for snippet details
-            const name = await vscode.window.showInputBox({
-                prompt: 'Enter snippet name',
-                placeHolder: 'e.g., "Console Log"',
-                validateInput: (value) => value.trim() ? null : 'Name is required'
-            });
-
-            if (!name) return;
-
+            // Prompt for snippet details (name is optional and set to null)
             const prefix = await vscode.window.showInputBox({
                 prompt: 'Enter snippet prefix (trigger)',
                 placeHolder: 'e.g., "cl" for console.log',
@@ -263,7 +261,7 @@ export class CommandManager {
 
             // Create snippet object
             const snippet = {
-                name: name.trim(),
+                name: null,
                 prefix: prefix.trim(),
                 body: selectedText.split('\n'),
                 description: description?.trim() || '',
@@ -276,7 +274,7 @@ export class CommandManager {
             
             if (createdSnippet) {
                 vscode.window.showInformationMessage(
-                    `Snippet "${name}" created successfully!`,
+                    `Snippet with prefix "${prefix}" created successfully!`,
                     'Refresh Snippets'
                 ).then(selection => {
                     if (selection === 'Refresh Snippets') {
@@ -302,6 +300,95 @@ export class CommandManager {
         };
 
         return scopeMapping[languageId] || [languageId];
+    }
+
+    private async handleDeleteSnippetByName(): Promise<void> {
+        if (!this.apiService) {
+            vscode.window.showErrorMessage('Please configure your API key first');
+            return;
+        }
+
+        try {
+            // Ask user for search term
+            const searchTerm = await vscode.window.showInputBox({
+                prompt: 'Enter snippet name or prefix to search',
+                placeHolder: 'e.g., "console.log", "cl", "useState"',
+                validateInput: (value) => value.trim() ? null : 'Search term is required'
+            });
+
+            if (!searchTerm) return;
+
+            // Search for snippets matching the term
+            const matchingSnippets = this.cachedSnippets.filter(snippet => 
+                (snippet.name && snippet.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                snippet.prefix.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            if (matchingSnippets.length === 0) {
+                vscode.window.showInformationMessage('No snippets found matching your search');
+                return;
+            }
+
+            // If multiple matches, let user choose
+            let selectedSnippet: Snippet;
+            if (matchingSnippets.length === 1) {
+                selectedSnippet = matchingSnippets[0];
+            } else {
+                const snippetOptions = matchingSnippets.map(snippet => ({
+                    label: snippet.name || snippet.prefix,
+                    description: `prefix: ${snippet.prefix}`,
+                    detail: snippet.description,
+                    snippet: snippet
+                }));
+
+                const selected = await vscode.window.showQuickPick(snippetOptions, {
+                    placeHolder: `Found ${matchingSnippets.length} matching snippets. Select one to delete:`,
+                    matchOnDescription: true,
+                    matchOnDetail: true
+                });
+
+                if (!selected) return;
+                selectedSnippet = selected.snippet;
+            }
+
+            // Show confirmation with snippet details
+            const confirmMessage = `Are you sure you want to delete this snippet?
+Name: ${selectedSnippet.name || 'Unnamed'}
+Prefix: ${selectedSnippet.prefix}
+Description: ${selectedSnippet.description}`;
+
+            const confirmation = await vscode.window.showWarningMessage(
+                confirmMessage,
+                { modal: true },
+                'Yes, delete it'
+            );
+
+            if (confirmation !== 'Yes, delete it') return;
+
+            // Delete the snippet
+            if (selectedSnippet.id) {
+                const success = await this.apiService.deleteSnippet(selectedSnippet.id);
+                
+                if (success) {
+                    vscode.window.showInformationMessage(
+                        `Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
+                        'Refresh Snippets'
+                    ).then(selection => {
+                        if (selection === 'Refresh Snippets') {
+                            vscode.commands.executeCommand('sneap.refreshSnippets');
+                        }
+                    });
+                } else {
+                    vscode.window.showErrorMessage('Failed to delete snippet');
+                }
+            } else {
+                vscode.window.showErrorMessage('Cannot delete snippet: missing ID');
+            }
+
+        } catch (error) {
+            console.error('Error deleting snippet:', error);
+            vscode.window.showErrorMessage('Failed to delete snippet');
+        }
     }
 
 }

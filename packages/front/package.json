@@ -46,6 +46,10 @@
       {
         "command": "sneap.createSnippetFromSelection",
         "title": "Sneap: Create snippet from selection"
+      },
+      {
+        "command": "sneap.deleteSnippetByName",
+        "title": "Sneap: Delete Snippet by Name/Prefix"
       }
     ]
   },

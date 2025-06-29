@@ -78,7 +78,7 @@ export class SearchService {
                 const matchesLanguage = !snippet.scope || snippet.scope.includes(language);
                 const matchesQuery = !query || 
                     snippet.prefix.toLowerCase().startsWith(query.toLowerCase()) ||
-                    snippet.name.toLowerCase().includes(query.toLowerCase());
+                    (snippet.name && snippet.name.toLowerCase().includes(query.toLowerCase()));
                 
                 return matchesLanguage && matchesQuery;
             }).slice(0, 10);

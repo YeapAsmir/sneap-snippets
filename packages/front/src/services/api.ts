@@ -164,4 +164,24 @@ export class ApiService {
             return [];
         }
     }
+
+    async deleteSnippet(id: number): Promise<boolean> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/snippets/${id}`, {
+                method: 'DELETE',
+                headers: this.getHeaders()
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to delete snippet: ${response.status} ${errorText}`);
+            }
+            
+            const data = await response.json() as { success: boolean };
+            return data.success;
+        } catch (error) {
+            console.error('Failed to delete snippet:', error);
+            return false;
+        }
+    }
 }

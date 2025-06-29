@@ -414,6 +414,39 @@ server.delete('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (reques
   }
 });
 
+// Admin Panel - Get comprehensive statistics
+server.get('/admin/stats', { preHandler: adminAuth }, async (request: any, reply) => {
+  await initializeServer();
+  
+  try {
+    const [snippetStats, usageStats, categoryStats, popularSnippets] = await Promise.all([
+      db.getSnippetStats(),
+      db.getUsageOverview(), 
+      db.getCategoryStats(),
+      db.getPopularSnippets(5)
+    ]);
+
+    return {
+      success: true,
+      data: {
+        snippets: snippetStats,
+        usage: usageStats,
+        categories: categoryStats,
+        popular: popularSnippets.map(s => ({
+          ...s,
+          body: JSON.parse(s.body),
+          scope: s.scope ? JSON.parse(s.scope) : undefined
+        }))
+      }
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch statistics'
+    };
+  }
+});
+
 // Get unique categories from existing snippets
 server.get('/api/categories', async (request: any, reply) => {
   await initializeServer();

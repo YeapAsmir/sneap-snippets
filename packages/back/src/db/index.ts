@@ -326,6 +326,79 @@ export class DrizzleDatabase {
     return result.map(row => row.category).filter((category): category is string => category !== null);
   }
 
+  async getSnippetStats(): Promise<any> {
+    const totalSnippets = await this.db.select({ count: count() }).from(snippets);
+    
+    const categoryBreakdown = await this.db
+      .select({
+        category: snippets.category,
+        count: count()
+      })
+      .from(snippets)
+      .groupBy(snippets.category)
+      .orderBy(desc(count()));
+
+    const avgUsageCount = await this.db
+      .select({
+        avgUsage: sql<number>`AVG(${snippets.usageCount})`
+      })
+      .from(snippets);
+
+    return {
+      total: totalSnippets[0]?.count || 0,
+      categories: categoryBreakdown.length,
+      avgUsage: Math.round(avgUsageCount[0]?.avgUsage || 0),
+      categoryBreakdown
+    };
+  }
+
+  async getUsageOverview(): Promise<any> {
+    const totalUsage = await this.db
+      .select({ total: count() })
+      .from(usageMetrics);
+
+    const uniqueUsers = await this.db
+      .select({ 
+        uniqueUsers: sql<number>`COUNT(DISTINCT ${usageMetrics.userId})`
+      })
+      .from(usageMetrics);
+
+    const avgSearchTime = await this.db
+      .select({
+        avgTime: sql<number>`AVG(${usageMetrics.searchTime})`
+      })
+      .from(usageMetrics)
+      .where(sql`${usageMetrics.searchTime} IS NOT NULL`);
+
+    const successRate = await this.db
+      .select({
+        rate: sql<number>`AVG(CASE WHEN ${usageMetrics.wasAccepted} THEN 1.0 ELSE 0.0 END) * 100`
+      })
+      .from(usageMetrics);
+
+    return {
+      totalUsage: totalUsage[0]?.total || 0,
+      uniqueUsers: uniqueUsers[0]?.uniqueUsers || 0,
+      avgSearchTime: Math.round(avgSearchTime[0]?.avgTime || 0),
+      successRate: Math.round(successRate[0]?.rate || 0)
+    };
+  }
+
+  async getCategoryStats(): Promise<any> {
+    const categoryUsage = await this.db
+      .select({
+        category: snippets.category,
+        totalUsage: sql<number>`SUM(${snippets.usageCount})`,
+        snippetCount: count()
+      })
+      .from(snippets)
+      .groupBy(snippets.category)
+      .orderBy(desc(sql<number>`SUM(${snippets.usageCount})`))
+      .limit(5);
+
+    return categoryUsage;
+  }
+
   async close(): Promise<void> {
     this.sqlite.close();
   }

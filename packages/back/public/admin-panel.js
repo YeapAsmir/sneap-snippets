@@ -17,6 +17,18 @@ function adminPanel() {
             activeKeys: 0,
             totalUsage: 0
         },
+        snippetStats: {
+            total: 0,
+            categories: 0,
+            avgUsage: 0
+        },
+        usageStats: {
+            totalUsage: 0,
+            uniqueUsers: 0,
+            avgSearchTime: 0,
+            successRate: 0
+        },
+        categoryStats: [],
         
         // Forms
         newKey: {
@@ -34,6 +46,7 @@ function adminPanel() {
         // Lifecycle
         async init() {
             await this.loadKeys();
+            await this.loadSnippetStats();
         },
 
         // Modal Management
@@ -160,6 +173,27 @@ function adminPanel() {
                 }
             } catch (error) {
                 this.showNotification('Connection error', 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadSnippetStats() {
+            this.loading = true;
+            try {
+                const response = await fetch('/admin/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.snippetStats = data.data.snippets;
+                    this.usageStats = data.data.usage;
+                    this.categoryStats = data.data.categories;
+                } else {
+                    this.showNotification('Error loading snippet statistics', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading snippet stats:', error);
+                this.showNotification('Connection error while loading stats', 'error');
             } finally {
                 this.loading = false;
             }
