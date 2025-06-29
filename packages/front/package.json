@@ -9,6 +9,12 @@
   "categories": [
     "Snippets"
   ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript", 
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
