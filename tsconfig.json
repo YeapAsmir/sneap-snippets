@@ -19,8 +19,8 @@
     }
   },
   "references": [
-    { "path": "./packages/fastify-app" },
-    { "path": "./packages/vscode-extension" }
+    { "path": "./packages/back" },
+    { "path": "./packages/front" }
   ],
   "exclude": ["node_modules", "**/dist", "**/out"]
 }

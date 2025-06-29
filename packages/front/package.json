@@ -11,24 +11,6 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "snippets": [
-      {
-        "language": "javascript",
-        "path": "./snippets/javascript.json"
-      },
-      {
-        "language": "typescript",
-        "path": "./snippets/typescript.json"
-      },
-      {
-        "language": "javascriptreact",
-        "path": "./snippets/react.json"
-      },
-      {
-        "language": "typescriptreact",
-        "path": "./snippets/react.json"
-      }
-    ],
     "commands": [
       {
         "command": "yeap-front-snippets.refreshSnippets",
@@ -37,12 +19,17 @@
       {
         "command": "yeap-front-snippets.insertSnippet",
         "title": "Yeap Snippets: Show Info"
+      },
+      {
+        "command": "yeap-front-snippets.clearCache",
+        "title": "Yeap Snippets: Clear Cache"
       }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
