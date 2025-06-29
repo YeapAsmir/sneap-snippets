@@ -1,6 +1,7 @@
-import * as vscode from 'vscode';
-import { Snippet } from '../types/snippet';
+// Misc
+import * as vscode       from 'vscode';
 import { SearchService } from '../services/search';
+import { Snippet }       from '../types/snippet';
 
 export class SnippetCompletionProvider implements vscode.CompletionItemProvider {
     private searchService: SearchService;
@@ -43,7 +44,7 @@ export class SnippetCompletionProvider implements vscode.CompletionItemProvider 
         
         // Add usage tracking on completion
         completion.command = {
-            command: 'sneap-front-snippets.trackUsage',
+            command: 'sneap.trackUsage',
             title: 'Track Usage',
             arguments: [snippet.id, languageId, Date.now()]
         };

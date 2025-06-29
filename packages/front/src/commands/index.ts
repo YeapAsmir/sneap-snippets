@@ -35,37 +35,37 @@ export class CommandManager {
     registerCommands(context: vscode.ExtensionContext): void {
         console.log('CommandManager: Registering commands...');
         const refreshCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.refreshSnippets', 
+            'sneap.refreshSnippets', 
             this.handleRefreshSnippets.bind(this)
         );
 
         const insertSnippetCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.insertSnippet', 
+            'sneap.insertSnippet', 
             this.handleInsertSnippet.bind(this)
         );
 
         const clearCacheCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.clearCache', 
+            'sneap.clearCache', 
             this.handleClearCache.bind(this)
         );
 
         const trackUsageCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.trackUsage', 
+            'sneap.trackUsage', 
             this.handleTrackUsage.bind(this)
         );
 
         const showUserStatsCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.showUserStats', 
+            'sneap.showUserStats', 
             this.handleShowUserStats.bind(this)
         );
 
         const configureApiKeyCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.configureApiKey',
+            'sneap.configureApiKey',
             this.handleConfigureApiKey.bind(this)
         );
 
         const resetApiKeyCommand = vscode.commands.registerCommand(
-            'sneap-front-snippets.resetApiKey',
+            'sneap.resetApiKey',
             this.handleResetApiKey.bind(this)
         );
 
