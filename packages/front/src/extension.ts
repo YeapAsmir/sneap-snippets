@@ -74,8 +74,6 @@ export async function activate(context: vscode.ExtensionContext) {
             ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'],
             completionProvider
         );
-
-        // Commands already registered during CommandManager creation
         
         const statusBarItem = createStatusBarItem();
         statusBarItem.text = `$(check) Sneap (${authService.getUserPrefix()})`;
@@ -99,8 +97,6 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         } else {
             vscode.window.showWarningMessage('Unable to load snippets. Check your connection.');
-            
-            // Commands are already registered at the beginning
         }
     }
 }

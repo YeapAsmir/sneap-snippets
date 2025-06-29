@@ -260,8 +260,9 @@ export class CommandManager {
             if (!category) return; // User cancelled category selection
 
             // Create snippet object
+            const sanitizedPrefix = prefix.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             const snippet = {
-                name: null,
+                name: sanitizedPrefix,
                 prefix: prefix.trim(),
                 body: selectedText.split('\n'),
                 description: description?.trim() || '',

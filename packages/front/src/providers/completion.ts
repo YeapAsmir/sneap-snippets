@@ -14,7 +14,6 @@ export class SnippetCompletionProvider implements vscode.CompletionItemProvider 
         document: vscode.TextDocument, 
         position: vscode.Position
     ): Promise<vscode.CompletionItem[]> {
-        const linePrefix = document.lineAt(position).text.substr(0, position.character);
         const languageId = document.languageId;
         
         // Extract current word being typed for prefix matching
@@ -38,8 +37,8 @@ export class SnippetCompletionProvider implements vscode.CompletionItemProvider 
     private createCompletionItem(snippet: Snippet, languageId: string): vscode.CompletionItem {
         const completion = new vscode.CompletionItem(snippet.prefix, vscode.CompletionItemKind.Snippet);
         completion.insertText = new vscode.SnippetString(snippet.body.join('\n'));
-        completion.documentation = new vscode.MarkdownString(snippet.description || 'No description provided');
-        completion.detail = snippet.name || snippet.prefix;
+        // completion.documentation = snippet.description || 'No description provided';
+        completion.detail = snippet.description || 'No description provided';
         completion.sortText = `0_${snippet.prefix}`;
         
         // Add usage tracking on completion

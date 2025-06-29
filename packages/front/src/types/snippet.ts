@@ -1,6 +1,6 @@
 export interface Snippet {
     id?: number;
-    name: string | null;
+    name: string;
     prefix: string;
     body: string[];
     description: string;
