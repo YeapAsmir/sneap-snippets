@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database from 'better-sqlite3';
 import { eq, desc, like, count, sql, and, or } from 'drizzle-orm';
-import { snippets, usageMetrics, userPreferences } from './schema';
-import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric } from './schema';
+import { snippets, usageMetrics, apiKeys } from './schema';
+import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey } from './schema';
 
 export class DrizzleDatabase {
   private db: ReturnType<typeof drizzle>;
@@ -266,10 +266,61 @@ export class DrizzleDatabase {
     return 'general';
   }
 
+  // API Key Management
+  async validateApiKey(keyId: string): Promise<ApiKey | null> {
+    const [key] = await this.db
+      .select()
+      .from(apiKeys)
+      .where(and(
+        eq(apiKeys.keyId, keyId),
+        eq(apiKeys.isActive, true)
+      ));
+
+    if (key) {
+      // Update last used timestamp and usage count
+      await this.db.update(apiKeys)
+        .set({
+          lastUsed: sql`(unixepoch())`,
+          usageCount: sql`${apiKeys.usageCount} + 1`
+        })
+        .where(eq(apiKeys.keyId, keyId));
+    }
+
+    return key || null;
+  }
+
+  async createApiKey(keyData: NewApiKey): Promise<ApiKey> {
+    const [created] = await this.db.insert(apiKeys).values(keyData).returning();
+    return created;
+  }
+
+  async getAllApiKeys(): Promise<ApiKey[]> {
+    return await this.db.select().from(apiKeys).orderBy(desc(apiKeys.createdAt));
+  }
+
+  async updateApiKey(keyId: string, updates: Partial<NewApiKey>): Promise<ApiKey | null> {
+    const [updated] = await this.db.update(apiKeys)
+      .set(updates)
+      .where(eq(apiKeys.keyId, keyId))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteApiKey(keyId: string): Promise<boolean> {
+    const result = await this.db.delete(apiKeys).where(eq(apiKeys.keyId, keyId));
+    return result.changes > 0;
+  }
+
+  generateApiKey(prefix: string): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 12);
+    return `${prefix}_${timestamp}${random}`;
+  }
+
   async close(): Promise<void> {
     this.sqlite.close();
   }
 }
 
-export { snippets, usageMetrics, userPreferences };
-export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric };
+export { snippets, usageMetrics, apiKeys };
+export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey };

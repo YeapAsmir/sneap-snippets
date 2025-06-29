@@ -1,7 +1,10 @@
-import fastify from 'fastify';
-import cors from '@fastify/cors';
+// Misc
+import cors                from '@fastify/cors';
+import fastify             from 'fastify';
+import path                from 'path';
 import { DrizzleDatabase } from './db';
-import { SnippetTrie } from './trie';
+import { SnippetTrie }     from './trie';
+import 'dotenv/config';
 
 const server = fastify({
   logger: true
@@ -12,6 +15,36 @@ const db = new DrizzleDatabase();
 const snippetTrie = new SnippetTrie();
 
 let isInitialized = false;
+
+// Middleware for API key validation
+async function validateApiKey(request: any, reply: any) {
+  await initializeServer();
+  
+  const apiKey = request.headers['x-api-key'];
+  
+  if (!apiKey) {
+    return reply.status(401).send({
+      success: false,
+      error: 'API key required'
+    });
+  }
+  
+  const validKey = await db.validateApiKey(apiKey);
+  
+  if (!validKey) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Invalid or inactive API key'
+    });
+  }
+  
+  // Attach user info to request
+  request.user = {
+    keyId: validKey.keyId,
+    userName: validKey.userName,
+    prefix: validKey.prefix
+  };
+}
 
 async function initializeServer() {
   if (isInitialized) return;
@@ -47,6 +80,74 @@ server.register(cors, {
   credentials: true
 });
 
+// Serve static files for admin panel (without authentication for plugin)
+server.register(require('@fastify/static'), {
+  root: path.join(__dirname, '../public'),
+  prefix: '/admin-static/'
+});
+
+// Admin authentication middleware
+async function adminAuth(request: any, reply: any) {
+  const authHeader = request.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    reply.header('WWW-Authenticate', 'Basic realm="Admin Panel"');
+    return reply.status(401).send('Authentication required');
+  }
+  
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  const [username, password] = credentials.split(':');
+  
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  
+  if (username !== 'admin' || password !== adminPassword) {
+    reply.header('WWW-Authenticate', 'Basic realm="Admin Panel"');
+    return reply.status(401).send('Invalid credentials');
+  }
+}
+
+// Admin panel route with authentication
+server.get('/admin', { preHandler: adminAuth }, async (request, reply) => {
+  return reply.redirect('/admin/index.html');
+});
+
+// Protect direct access to index.html with custom handler
+server.get('/admin/index.html', { preHandler: adminAuth }, async (request, reply) => {
+  const fs = require('fs');
+  const adminHtmlPath = path.join(__dirname, '../public/index.html');
+  
+  try {
+    const htmlContent = fs.readFileSync(adminHtmlPath, 'utf8');
+    reply.type('text/html').send(htmlContent);
+  } catch (error) {
+    reply.status(404).send('Admin panel not found');
+  }
+});
+
+// Block direct access to admin-static files
+server.addHook('onRequest', async (request, reply) => {
+  if (request.url.startsWith('/admin-static/') && !request.url.includes('/admin-static/index.html')) {
+    // Allow CSS, JS, images etc. but only if we're already authenticated
+    const authHeader = request.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      return reply.status(403).send('Access denied');
+    }
+    
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+    const [username, password] = credentials.split(':');
+    
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    
+    if (username !== 'admin' || password !== adminPassword) {
+      return reply.status(403).send('Access denied');
+    }
+  }
+});
+
+
 server.get('/', async (request, reply) => {
   return { 
     hello: 'Yeap Snippets API',
@@ -70,8 +171,7 @@ server.get('/health', async (request, reply) => {
 });
 
 // Get snippets with intelligent personalization
-server.get('/api/snippets', async (request: any, reply) => {
-  await initializeServer();
+server.get('/api/snippets', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const { language, limit = 50, userId } = request.query;
   
@@ -101,8 +201,7 @@ server.get('/api/snippets', async (request: any, reply) => {
 });
 
 // Ultra-fast prefix search using Trie + SQLite
-server.get('/api/snippets/prefix', async (request: any, reply) => {
-  await initializeServer();
+server.get('/api/snippets/prefix', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const { 
     prefix = '', 
@@ -142,8 +241,7 @@ server.get('/api/snippets/prefix', async (request: any, reply) => {
 });
 
 // Full-text search using SQLite
-server.get('/api/snippets/search', async (request: any, reply) => {
-  await initializeServer();
+server.get('/api/snippets/search', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const { 
     q = '', 
@@ -177,8 +275,7 @@ server.get('/api/snippets/search', async (request: any, reply) => {
 });
 
 // Track snippet usage with detailed analytics
-server.post('/api/snippets/usage', async (request: any, reply) => {
-  await initializeServer();
+server.post('/api/snippets/usage', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const {
     snippetId,
@@ -212,8 +309,7 @@ server.post('/api/snippets/usage', async (request: any, reply) => {
 });
 
 // Get comprehensive user analytics
-server.get('/api/users/:userId/stats', async (request: any, reply) => {
-  await initializeServer();
+server.get('/api/users/:userId/stats', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const { userId } = request.params;
   const stats = await db.getUserStats(userId);
@@ -226,8 +322,7 @@ server.get('/api/users/:userId/stats', async (request: any, reply) => {
 });
 
 // Get snippet-specific analytics
-server.get('/api/snippets/:id/analytics', async (request: any, reply) => {
-  await initializeServer();
+server.get('/api/snippets/:id/analytics', { preHandler: validateApiKey }, async (request: any, reply) => {
   
   const { id } = request.params;
   const analytics = await db.getSnippetAnalytics(parseInt(id));
@@ -237,6 +332,107 @@ server.get('/api/snippets/:id/analytics', async (request: any, reply) => {
     data: analytics,
     snippetId: parseInt(id)
   };
+});
+
+// Update index.html to use /admin-static/ for assets if needed
+
+// Admin Panel API Routes
+server.get('/admin/api-keys', { preHandler: adminAuth }, async (request: any, reply) => {
+  await initializeServer();
+  
+  try {
+    const keys = await db.getAllApiKeys();
+    return {
+      success: true,
+      data: keys
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+server.post('/admin/api-keys', { preHandler: adminAuth }, async (request: any, reply) => {
+  await initializeServer();
+  
+  const { userName, prefix, notes } = request.body;
+  
+  if (!userName || !prefix) {
+    return {
+      success: false,
+      error: 'userName and prefix are required'
+    };
+  }
+  
+  try {
+    const keyId = db.generateApiKey(prefix);
+    const newKey = await db.createApiKey({
+      keyId,
+      userName,
+      prefix,
+      notes: notes || undefined
+    });
+    
+    return {
+      success: true,
+      data: newKey
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+server.put('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (request: any, reply) => {
+  await initializeServer();
+  
+  const { keyId } = request.params;
+  const updates = request.body;
+  
+  try {
+    const updated = await db.updateApiKey(keyId, updates);
+    
+    if (updated) {
+      return {
+        success: true,
+        data: updated
+      };
+    }
+    
+    return {
+      success: false,
+      error: 'API key not found'
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+server.delete('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (request: any, reply) => {
+  await initializeServer();
+  
+  const { keyId } = request.params;
+  
+  try {
+    const deleted = await db.deleteApiKey(keyId);
+    
+    return {
+      success: deleted,
+      message: deleted ? 'API key deleted' : 'API key not found'
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 });
 
 // CRUD Operations

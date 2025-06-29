@@ -5,25 +5,48 @@ const API_BASE_URL = 'http://localhost:3000';
 
 export class ApiService {
     private userId: string;
+    private apiKey: string;
 
-    constructor(userId: string) {
+    constructor(userId: string, apiKey: string) {
         this.userId = userId;
+        this.apiKey = apiKey;
+    }
+
+    private getHeaders(): Record<string, string> {
+        return {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.apiKey
+        };
     }
 
     async fetchSnippets(): Promise<Snippet[]> {
         try {
             const url = `${API_BASE_URL}/api/snippets?userId=${this.userId}&limit=100`;
-            const response = await fetch(url);
+            console.log('Fetching snippets from:', url);
+            console.log('Headers:', this.getHeaders());
+            
+            const response = await fetch(url, {
+                headers: this.getHeaders()
+            });
+            
+            console.log('Response status:', response.status);
+            
             if (!response.ok) {
-                throw new Error('Failed to fetch snippets');
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
+                
+                if (response.status === 401) {
+                    throw new Error('Invalid API key');
+                }
+                throw new Error(`Failed to fetch snippets: ${response.status} ${errorText}`);
             }
+            
             const data = await response.json() as { data: Snippet[], personalized: boolean };
             console.log(`Loaded ${data.data.length} ${data.personalized ? 'personalized' : 'popular'} snippets`);
             return data.data || [];
         } catch (error) {
             console.error('Error fetching snippets:', error);
-            vscode.window.showWarningMessage('Failed to fetch snippets from server. Using offline mode.');
-            return [];
+            throw error; // Re-throw instead of returning empty array
         }
     }
 
@@ -41,6 +64,7 @@ export class ApiService {
             const timeoutId = setTimeout(() => controller.abort(), 1000);
 
             const response = await fetch(`${API_BASE_URL}${endpoint}?${params}`, {
+                headers: this.getHeaders(),
                 signal: controller.signal
             });
             
@@ -68,7 +92,7 @@ export class ApiService {
         try {
             await fetch(`${API_BASE_URL}/api/snippets/usage`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this.getHeaders(),
                 body: JSON.stringify({
                     ...metric,
                     userId: this.userId
@@ -81,7 +105,9 @@ export class ApiService {
 
     async getUserStats(): Promise<UserStats | null> {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/users/${this.userId}/stats`);
+            const response = await fetch(`${API_BASE_URL}/api/users/${this.userId}/stats`, {
+                headers: this.getHeaders()
+            });
             const data = await response.json() as { success: boolean; data: UserStats };
             
             if (data.success) {

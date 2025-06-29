@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeap Snippets - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .keys-table th,
+        .keys-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .keys-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .status-active {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        .status-inactive {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .key-id {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .notification {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .notification.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Yeap Snippets - Admin Panel</h1>
+            <p>Gestion des clés d'API utilisateur</p>
+        </div>
+        
+        <div class="content">
+            <div id="notification" class="notification"></div>
+            
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div id="totalKeys" class="stat-number">0</div>
+                    <div class="stat-label">Total des clés</div>
+                </div>
+                <div class="stat-card">
+                    <div id="activeKeys" class="stat-number">0</div>
+                    <div class="stat-label">Clés actives</div>
+                </div>
+                <div class="stat-card">
+                    <div id="totalUsage" class="stat-number">0</div>
+                    <div class="stat-label">Total utilisations</div>
+                </div>
+            </div>
+            
+            <!-- Create Key Form -->
+            <div class="form-section">
+                <h2>🆕 Générer une nouvelle clé API</h2>
+                <form id="createKeyForm">
+                    <div class="form-group">
+                        <label for="userName">Nom d'utilisateur (sera utilisé comme préfixe)</label>
+                        <input type="text" id="userName" required placeholder="ex: asmr, john, alice" pattern="[a-zA-Z0-9_-]+" style="font-family: monospace;">
+                        <small style="color: #6c757d; font-size: 12px;">
+                            Génère une clé du format: <strong>nom_utilisateur_clé_unique</strong>
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notes (optionnel)</label>
+                        <textarea id="notes" rows="3" placeholder="Notes sur cet utilisateur..."></textarea>
+                    </div>
+                    <button type="submit" class="btn">🚀 Générer la clé</button>
+                </form>
+            </div>
+            
+            <!-- Keys List -->
+            <div class="form-section">
+                <h2>📋 Clés API existantes</h2>
+                <button onclick="loadKeys()" class="btn">🔄 Actualiser</button>
+                
+                <table class="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Clé API</th>
+                            <th>Utilisateur</th>
+                            <th>Statut</th>
+                            <th>Utilisations</th>
+                            <th>Dernière utilisation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #6c757d;">
+                                Chargement des clés...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+
+        // Load API keys
+        async function loadKeys() {
+            try {
+                const response = await fetch('/admin/api-keys');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayKeys(data.data);
+                    updateStats(data.data);
+                } else {
+                    showNotification('Erreur lors du chargement des clés', 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        }
+
+        // Display keys in table
+        function displayKeys(keys) {
+            const tbody = document.getElementById('keysTableBody');
+            
+            if (keys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d;">Aucune clé API créée</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = keys.map(key => `
+                <tr>
+                    <td><span class="key-id">${key.keyId}</span></td>
+                    <td>${key.userName}</td>
+                    <td>
+                        <span class="status-${key.isActive ? 'active' : 'inactive'}">
+                            ${key.isActive ? '✅ Active' : '❌ Inactive'}
+                        </span>
+                    </td>
+                    <td>${key.usageCount || 0}</td>
+                    <td>${key.lastUsed ? new Date(key.lastUsed * 1000).toLocaleDateString('fr-FR') : 'Jamais'}</td>
+                    <td>
+                        <button onclick="toggleKey('${key.keyId}', ${!key.isActive})" class="btn ${key.isActive ? 'btn-danger' : 'btn-success'}" style="margin-right: 10px;">
+                            ${key.isActive ? 'Désactiver' : 'Activer'}
+                        </button>
+                        <button onclick="deleteKey('${key.keyId}')" class="btn btn-danger">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update stats
+        function updateStats(keys) {
+            document.getElementById('totalKeys').textContent = keys.length;
+            document.getElementById('activeKeys').textContent = keys.filter(k => k.isActive).length;
+            document.getElementById('totalUsage').textContent = keys.reduce((sum, k) => sum + (k.usageCount || 0), 0);
+        }
+
+        // Create new API key
+        document.getElementById('createKeyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userName = document.getElementById('userName').value;
+            const formData = {
+                userName: userName,
+                prefix: userName, // Utilise le nom d'utilisateur comme préfixe
+                notes: document.getElementById('notes').value
+            };
+            
+            try {
+                const response = await fetch('/admin/api-keys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`✅ Clé créée: ${data.data.keyId}`);
+                    document.getElementById('createKeyForm').reset();
+                    loadKeys();
+                } else {
+                    showNotification(data.error || 'Erreur lors de la création', 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        });
+
+        // Toggle key status
+        async function toggleKey(keyId, isActive) {
+            try {
+                const response = await fetch(`/admin/api-keys/${keyId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isActive })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Clé ${isActive ? 'activée' : 'désactivée'}`);
+                    loadKeys();
+                } else {
+                    showNotification('Erreur lors de la mise à jour', 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        }
+
+        // Delete key
+        async function deleteKey(keyId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette clé ?')) return;
+            
+            try {
+                const response = await fetch(`/admin/api-keys/${keyId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Clé supprimée');
+                    loadKeys();
+                } else {
+                    showNotification('Erreur lors de la suppression', 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        }
+
+        // Load keys on page load
+        loadKeys();
+    </script>
+</body>
+</html>

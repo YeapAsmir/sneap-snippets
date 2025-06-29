@@ -1,11 +1,11 @@
-// Misc
-import * as vscode                   from 'vscode';
-import { SnippetCache }              from './cache';
-import { CommandManager }            from './commands';
+import * as vscode from 'vscode';
+import { SnippetCache } from './cache';
+import { CommandManager } from './commands';
 import { SnippetCompletionProvider } from './providers/completion';
-import { ApiService }                from './services/api';
-import { SearchService }             from './services/search';
-import { UserService }               from './services/user';
+import { ApiService } from './services/api';
+import { SearchService } from './services/search';
+import { UserService } from './services/user';
+import { AuthService } from './services/auth';
 
 function createStatusBarItem(): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -19,34 +19,139 @@ function createStatusBarItem(): vscode.StatusBarItem {
 export async function activate(context: vscode.ExtensionContext) {
     console.log('Yeap Front Snippets is now active!');
 
-    // Initialize services
+    // Initialize authentication first
+    const authService = new AuthService();
+    const isAuthenticated = await authService.initialize(context);
+    
+    if (!isAuthenticated) {
+        vscode.window.showWarningMessage(
+            'Yeap Snippets: Cle API requise',
+            'Configurer maintenant'
+        ).then(selection => {
+            if (selection === 'Configurer maintenant') {
+                vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
+            }
+        });
+        
+        // Register minimal commands for configuration
+        const configureCommand = vscode.commands.registerCommand(
+            'yeap-front-snippets.configureApiKey',
+            async () => {
+                const success = await authService.promptForApiKey();
+                if (success) {
+                    vscode.window.showInformationMessage('Cle API configuree! Redemarrage de VS Code...');
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            }
+        );
+        context.subscriptions.push(configureCommand);
+        return;
+    }
+
+    // Initialize other services
     const userService = new UserService();
     const userId = await userService.initialize(context);
     console.log(`User ID: ${userId.substring(0, 8)}...`);
+    console.log(`API Key: ${authService.getUserPrefix()}_***`);
 
-    const apiService = new ApiService(userId);
+    const apiService = new ApiService(userId, authService.getApiKey());
     const snippetCache = new SnippetCache();
     await snippetCache.initialize(context);
 
     const searchService = new SearchService(snippetCache, apiService);
-    const commandManager = new CommandManager(snippetCache, apiService, searchService);
+    const commandManager = new CommandManager(snippetCache, apiService, searchService, authService);
     const completionProvider = new SnippetCompletionProvider(searchService);
 
-    // Load initial snippets
-    const cachedSnippets = await apiService.fetchSnippets();
-    commandManager.setCachedSnippets(cachedSnippets);
-    console.log(`Loaded ${cachedSnippets.length} snippets for user ${userId.substring(0, 8)}...`);
+    // Load initial snippets with error handling
+    try {
+        const cachedSnippets = await apiService.fetchSnippets();
+        commandManager.setCachedSnippets(cachedSnippets);
+        console.log(`Loaded ${cachedSnippets.length} snippets for ${authService.getUserPrefix()}`);
+        
+        // Register completion provider
+        const provider = vscode.languages.registerCompletionItemProvider(
+            ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'],
+            completionProvider
+        );
 
-    // Register completion provider
-    const provider = vscode.languages.registerCompletionItemProvider(
-        ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'],
-        completionProvider
-    );
+        // Register commands
+        commandManager.registerCommands(context);
+        
+        // Register reset API key command
+        const resetCommand = vscode.commands.registerCommand(
+            'yeap-front-snippets.resetApiKey',
+            async () => {
+                const confirmation = await vscode.window.showWarningMessage(
+                    'Etes-vous sur de vouloir supprimer votre cle API ?',
+                    { modal: true },
+                    'Oui, supprimer'
+                );
+                
+                if (confirmation === 'Oui, supprimer') {
+                    await authService.clearApiKey();
+                    vscode.window.showInformationMessage('Cle API supprimee. Redemarrage de VS Code...');
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            }
+        );
+        
+        const statusBarItem = createStatusBarItem();
+        statusBarItem.text = `$(check) Yeap Snippets (${authService.getUserPrefix()})`;
+        statusBarItem.tooltip = `Connected as ${authService.getUserPrefix()} - Click to refresh`;
 
-    // Register commands
-    commandManager.registerCommands(context);
-    const statusBarItem = createStatusBarItem();
+        vscode.window.setStatusBarMessage(`Yeap Snippets: ${cachedSnippets.length} snippets loaded!`, 3000);
+        context.subscriptions.push(provider, statusBarItem, resetCommand);
+        
+    } catch (error: any) {
+        console.error('Error loading snippets:', error);
+        
+        if (error.message === 'Invalid API key') {
+            vscode.window.showErrorMessage(
+                'Cle API invalide ou expiree',
+                'Reconfigurer'
+            ).then(selection => {
+                if (selection === 'Reconfigurer') {
+                    vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
+                }
+            });
+            return;
+        } else {
+            vscode.window.showWarningMessage('Impossible de charger les snippets. Verifiez votre connexion.');
+            
+            // Register minimal functionality even if API fails
+            const configureCommand = vscode.commands.registerCommand(
+                'yeap-front-snippets.configureApiKey',
+                async () => {
+                    const success = await authService.promptForApiKey();
+                    if (success) {
+                        vscode.window.showInformationMessage('Cle API configuree! Redemarrage de VS Code...');
+                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                    }
+                }
+            );
+            
+            const resetCommand = vscode.commands.registerCommand(
+                'yeap-front-snippets.resetApiKey',
+                async () => {
+                    const confirmation = await vscode.window.showWarningMessage(
+                        'Etes-vous sur de vouloir supprimer votre cle API ?',
+                        { modal: true },
+                        'Oui, supprimer'
+                    );
+                    
+                    if (confirmation === 'Oui, supprimer') {
+                        await authService.clearApiKey();
+                        vscode.window.showInformationMessage('Cle API supprimee. Redemarrage de VS Code...');
+                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                    }
+                }
+            );
+            
+            context.subscriptions.push(configureCommand, resetCommand);
+        }
+    }
+}
 
-    vscode.window.setStatusBarMessage('Yeap Snippets: Ready!', 3000);
-    context.subscriptions.push(provider, statusBarItem);
+export function deactivate() {
+    // Cleanup if needed
 }

@@ -8,6 +8,20 @@
       "when": 1751194936238,
       "tag": "0000_chunky_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1751219667358,
+      "tag": "0001_daffy_celestials",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1751225166605,
+      "tag": "0002_supreme_eternals",
+      "breakpoints": true
     }
   ]
 }

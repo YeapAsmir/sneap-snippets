@@ -3,21 +3,25 @@ import { Snippet } from '../types/snippet';
 import { SnippetCache } from '../cache';
 import { ApiService } from '../services/api';
 import { SearchService } from '../services/search';
+import { AuthService } from '../services/auth';
 
 export class CommandManager {
     private cachedSnippets: Snippet[] = [];
     private snippetCache: SnippetCache;
     private apiService: ApiService;
     private searchService: SearchService;
+    private authService: AuthService;
 
     constructor(
         snippetCache: SnippetCache, 
         apiService: ApiService, 
-        searchService: SearchService
+        searchService: SearchService,
+        authService: AuthService
     ) {
         this.snippetCache = snippetCache;
         this.apiService = apiService;
         this.searchService = searchService;
+        this.authService = authService;
     }
 
     setCachedSnippets(snippets: Snippet[]): void {
@@ -51,12 +55,18 @@ export class CommandManager {
             this.handleShowUserStats.bind(this)
         );
 
+        const configureApiKeyCommand = vscode.commands.registerCommand(
+            'yeap-front-snippets.configureApiKey',
+            this.handleConfigureApiKey.bind(this)
+        );
+
         context.subscriptions.push(
             refreshCommand,
             insertSnippetCommand,
             clearCacheCommand,
             trackUsageCommand,
-            showUserStatsCommand
+            showUserStatsCommand,
+            configureApiKeyCommand
         );
     }
 
@@ -95,22 +105,36 @@ export class CommandManager {
     }
 
     private async handleShowUserStats(): Promise<void> {
+        if (!this.authService.isAuthenticated()) {
+            vscode.window.showErrorMessage('Veuillez configurer votre clé API d\'abord');
+            return;
+        }
+
         try {
             const stats = await this.apiService.getUserStats();
             
             if (stats) {
                 const favLangs = stats.favoriteLanguages?.map(l => `${l.language} (${l.count})`).join(', ') || 'None yet';
-                const message = `📊 Your Snippet Stats:
-• Total usage: ${stats.totalUsage || 0}
-• Favorite languages: ${favLangs}
-• Avg search time: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
+                const userPrefix = this.authService.getUserPrefix();
+                const message = `📊 Statistiques de ${userPrefix}:
+• Total d'utilisations: ${stats.totalUsage || 0}
+• Langages préférés: ${favLangs}
+• Temps de recherche moyen: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
                 
                 vscode.window.showInformationMessage(message);
             } else {
-                vscode.window.showErrorMessage('Failed to load user stats');
+                vscode.window.showErrorMessage('Impossible de charger les statistiques');
             }
         } catch (error) {
-            vscode.window.showErrorMessage('Failed to load user stats');
+            vscode.window.showErrorMessage('Impossible de charger les statistiques');
+        }
+    }
+
+    private async handleConfigureApiKey(): Promise<void> {
+        const success = await this.authService.promptForApiKey();
+        if (success) {
+            vscode.window.showInformationMessage('✅ Clé API configurée avec succès! Actualisation des snippets...');
+            await this.handleRefreshSnippets();
         }
     }
 }

@@ -46,22 +46,23 @@ export const usageMetrics = sqliteTable('usage_metrics', {
   timestamp: integer('timestamp').default(sql`(unixepoch())`),
 });
 
-export const userPreferences = sqliteTable('user_preferences', {
+
+export const apiKeys = sqliteTable('api_keys', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: text('user_id').notNull().unique(),
+  keyId: text('key_id').notNull().unique(), // e.g., asmr_9kdoe24fjzi2
+  userName: text('user_name').notNull(), // Display name
+  prefix: text('prefix').notNull(), // User prefix (asmr, john, etc.)
   
-  // Personalization
-  favoriteCategories: text('favorite_categories'), // JSON array
-  excludedCategories: text('excluded_categories'), // JSON array
-  customKeywords: text('custom_keywords'), // JSON array
+  // Key management
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  expiresAt: integer('expires_at'), // Optional expiration
+  usageCount: integer('usage_count').default(0),
+  lastUsed: integer('last_used'),
   
-  // Behavior tracking
-  averageSessionLength: real('avg_session_length').default(0),
-  preferredLanguages: text('preferred_languages'), // JSON array
-  typingSpeed: real('typing_speed').default(50), // WPM
-  
-  lastActive: integer('last_active').default(sql`(unixepoch())`),
+  // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
+  createdBy: text('created_by').default('admin'),
+  notes: text('notes'), // Admin notes
 });
 
 // Export types
@@ -69,5 +70,5 @@ export type Snippet = typeof snippets.$inferSelect;
 export type NewSnippet = typeof snippets.$inferInsert;
 export type UsageMetric = typeof usageMetrics.$inferSelect;
 export type NewUsageMetric = typeof usageMetrics.$inferInsert;
-export type UserPreference = typeof userPreferences.$inferSelect;
-export type NewUserPreference = typeof userPreferences.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
