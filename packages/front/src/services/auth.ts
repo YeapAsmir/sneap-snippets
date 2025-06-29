@@ -1,3 +1,4 @@
+// Misc
 import * as vscode from 'vscode';
 
 export class AuthService {
@@ -8,32 +9,29 @@ export class AuthService {
         this.context = context;
         this.apiKey = context.globalState.get('yeap-api-key') || '';
         
-        if (!this.apiKey) {
-            return await this.promptForApiKey();
-        }
-        
-        return true;
+        // Just return whether we have a key, don't auto-prompt
+        return this.apiKey.length > 0;
     }
 
     async promptForApiKey(): Promise<boolean> {
         const apiKey = await vscode.window.showInputBox({
-            prompt: 'Entrez votre clé API Yeap Snippets',
-            placeHolder: 'ex: asmr_mchz54hj1fx0u3nwab',
+            prompt: 'Enter your Yeap Snippets API key',
+            placeHolder: 'ex: yeap_123456789',
             ignoreFocusOut: true,
             validateInput: (value) => {
                 if (!value || value.trim().length === 0) {
-                    return 'La clé API ne peut pas être vide';
+                    return 'API key cannot be empty';
                 }
                 if (value.length < 10) {
-                    return 'La clé API doit contenir au moins 10 caractères';
+                    return 'API key must contain at least 10 characters';
                 }
                 if (!value.includes('_')) {
-                    return 'Format de clé invalide (doit contenir un underscore)';
+                    return 'Invalid key format (must contain an underscore)';
                 }
-                // Vérifier le format prefix_key
+                // Check prefix_key format
                 const parts = value.split('_');
                 if (parts.length < 2 || parts[0].length < 2 || parts[1].length < 8) {
-                    return 'Format de clé invalide (attendu: nom_utilisateur_clé)';
+                    return 'Invalid key format (expected: username_key)';
                 }
                 return null;
             }

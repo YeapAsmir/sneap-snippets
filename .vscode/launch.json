@@ -6,7 +6,8 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/front"
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/front",
+        "--disable-extensions",
       ],
       "outFiles": [
         "${workspaceFolder}/packages/front/out/**/*.js"
@@ -18,7 +19,10 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "${workspaceFolder}/packages/back",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"

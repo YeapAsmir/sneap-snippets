@@ -125,27 +125,7 @@ server.get('/admin/index.html', { preHandler: adminAuth }, async (request, reply
   }
 });
 
-// Block direct access to admin-static files
-server.addHook('onRequest', async (request, reply) => {
-  if (request.url.startsWith('/admin-static/') && !request.url.includes('/admin-static/index.html')) {
-    // Allow CSS, JS, images etc. but only if we're already authenticated
-    const authHeader = request.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-      return reply.status(403).send('Access denied');
-    }
-    
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-    const [username, password] = credentials.split(':');
-    
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    
-    if (username !== 'admin' || password !== adminPassword) {
-      return reply.status(403).send('Access denied');
-    }
-  }
-});
+// Note: Static files are accessible once authenticated via the main page
 
 
 server.get('/', async (request, reply) => {

@@ -3,6 +3,7 @@
   "displayName": "Yeap Front Snippets",
   "description": "Frontend snippets for Yeap development",
   "version": "0.0.1",
+  "publisher": "asmir",
   "engines": {
     "vscode": "^1.74.0"
   },

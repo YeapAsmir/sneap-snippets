@@ -277,10 +277,9 @@ export class DrizzleDatabase {
       ));
 
     if (key) {
-      // Update last used timestamp and usage count
+      // Update usage count
       await this.db.update(apiKeys)
         .set({
-          lastUsed: sql`(unixepoch())`,
           usageCount: sql`${apiKeys.usageCount} + 1`
         })
         .where(eq(apiKeys.keyId, keyId));

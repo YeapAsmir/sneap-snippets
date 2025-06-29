@@ -55,9 +55,7 @@ export const apiKeys = sqliteTable('api_keys', {
   
   // Key management
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  expiresAt: integer('expires_at'), // Optional expiration
   usageCount: integer('usage_count').default(0),
-  lastUsed: integer('last_used'),
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),

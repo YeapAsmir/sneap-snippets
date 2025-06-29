@@ -1,21 +1,22 @@
-import * as vscode from 'vscode';
-import { Snippet } from '../types/snippet';
-import { SnippetCache } from '../cache';
-import { ApiService } from '../services/api';
+// Misc
+import * as vscode       from 'vscode';
+import { SnippetCache }  from '../cache';
+import { ApiService }    from '../services/api';
+import { AuthService }   from '../services/auth';
 import { SearchService } from '../services/search';
-import { AuthService } from '../services/auth';
+import { Snippet }       from '../types/snippet';
 
 export class CommandManager {
     private cachedSnippets: Snippet[] = [];
     private snippetCache: SnippetCache;
-    private apiService: ApiService;
-    private searchService: SearchService;
+    private apiService: ApiService | null;
+    private searchService: SearchService | null;
     private authService: AuthService;
 
     constructor(
         snippetCache: SnippetCache, 
-        apiService: ApiService, 
-        searchService: SearchService,
+        apiService: ApiService | null, 
+        searchService: SearchService | null,
         authService: AuthService
     ) {
         this.snippetCache = snippetCache;
@@ -26,10 +27,13 @@ export class CommandManager {
 
     setCachedSnippets(snippets: Snippet[]): void {
         this.cachedSnippets = snippets;
-        this.searchService.setCachedSnippets(snippets);
+        if (this.searchService) {
+            this.searchService.setCachedSnippets(snippets);
+        }
     }
 
     registerCommands(context: vscode.ExtensionContext): void {
+        console.log('CommandManager: Registering commands...');
         const refreshCommand = vscode.commands.registerCommand(
             'yeap-front-snippets.refreshSnippets', 
             this.handleRefreshSnippets.bind(this)
@@ -60,17 +64,27 @@ export class CommandManager {
             this.handleConfigureApiKey.bind(this)
         );
 
+        const resetApiKeyCommand = vscode.commands.registerCommand(
+            'yeap-front-snippets.resetApiKey',
+            this.handleResetApiKey.bind(this)
+        );
+
         context.subscriptions.push(
             refreshCommand,
             insertSnippetCommand,
             clearCacheCommand,
             trackUsageCommand,
             showUserStatsCommand,
-            configureApiKeyCommand
+            configureApiKeyCommand,
+            resetApiKeyCommand
         );
     }
 
     private async handleRefreshSnippets(): Promise<void> {
+        if (!this.apiService) {
+            vscode.window.showErrorMessage('Please configure your API key first');
+            return;
+        }
         const snippets = await this.apiService.fetchSnippets();
         this.setCachedSnippets(snippets);
         vscode.window.showInformationMessage(`Refreshed! Loaded ${snippets.length} snippets.`);
@@ -84,11 +98,14 @@ export class CommandManager {
     }
 
     private async handleClearCache(): Promise<void> {
+        console.log('Clear cache command executed');
         await this.snippetCache.clear();
         vscode.window.showInformationMessage('Snippet cache cleared!');
     }
 
     private async handleTrackUsage(snippetId: number, language: string, startTime: number): Promise<void> {
+        if (!this.apiService) return;
+        
         const searchTime = Date.now() - startTime;
         const activeEditor = vscode.window.activeTextEditor;
         const fileExtension = activeEditor?.document.fileName.split('.').pop();
@@ -105,8 +122,8 @@ export class CommandManager {
     }
 
     private async handleShowUserStats(): Promise<void> {
-        if (!this.authService.isAuthenticated()) {
-            vscode.window.showErrorMessage('Veuillez configurer votre clé API d\'abord');
+        if (!this.authService.isAuthenticated() || !this.apiService) {
+            vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
 
@@ -116,25 +133,42 @@ export class CommandManager {
             if (stats) {
                 const favLangs = stats.favoriteLanguages?.map(l => `${l.language} (${l.count})`).join(', ') || 'None yet';
                 const userPrefix = this.authService.getUserPrefix();
-                const message = `📊 Statistiques de ${userPrefix}:
-• Total d'utilisations: ${stats.totalUsage || 0}
-• Langages préférés: ${favLangs}
-• Temps de recherche moyen: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
+                const message = `Statistics for ${userPrefix}:
+• Total usage: ${stats.totalUsage || 0}
+• Favorite languages: ${favLangs}
+• Average search time: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
                 
                 vscode.window.showInformationMessage(message);
             } else {
-                vscode.window.showErrorMessage('Impossible de charger les statistiques');
+                vscode.window.showErrorMessage('Unable to load statistics');
             }
         } catch (error) {
-            vscode.window.showErrorMessage('Impossible de charger les statistiques');
+            vscode.window.showErrorMessage('Unable to load statistics');
         }
     }
 
     private async handleConfigureApiKey(): Promise<void> {
+        console.log('Configure command executed');
         const success = await this.authService.promptForApiKey();
         if (success) {
-            vscode.window.showInformationMessage('✅ Clé API configurée avec succès! Actualisation des snippets...');
-            await this.handleRefreshSnippets();
+            vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
+            vscode.commands.executeCommand('workbench.action.reloadWindow');
         }
     }
+
+    private async handleResetApiKey(): Promise<void> {
+        console.log('Reset command executed');
+        const confirmation = await vscode.window.showWarningMessage(
+            'Are you sure you want to delete your API key?',
+            { modal: true },
+            'Yes, delete'
+        );
+        
+        if (confirmation === 'Yes, delete') {
+            await this.authService.clearApiKey();
+            vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
+            vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+    }
+
 }

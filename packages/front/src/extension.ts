@@ -23,7 +23,31 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize authentication first
     const authService = new AuthService();
     const isAuthenticated = await authService.initialize(context);
+
+    // Initialize basic services
+    const userService = new UserService();
+    const snippetCache = new SnippetCache();
+    await snippetCache.initialize(context);
+
+    // Always create CommandManager and register commands first
+    let commandManager: CommandManager;
+    let apiService: ApiService | null = null;
+    let searchService: SearchService | null = null;
     
+    if (isAuthenticated) {
+        const userPrefix = authService.getUserPrefix();
+        userService.setUserId(userPrefix);
+        const userId = userService.getUserId();
+        console.log(`User ID: ${userId}`);
+        console.log(`API Key: ${userPrefix}_***`);
+
+        apiService = new ApiService(userId, authService.getApiKey());
+        searchService = new SearchService(snippetCache, apiService);
+    }
+    
+    commandManager = new CommandManager(snippetCache, apiService, searchService, authService);
+    commandManager.registerCommands(context);
+
     if (!isAuthenticated) {
         vscode.window.showWarningMessage(
             'Yeap Snippets: API key required',
@@ -34,38 +58,14 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         });
         
-        // Register minimal commands for configuration
-        const configureCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.configureApiKey',
-            async () => {
-                const success = await authService.promptForApiKey();
-                if (success) {
-                    vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
-                    vscode.commands.executeCommand('workbench.action.reloadWindow');
-                }
-            }
-        );
-        context.subscriptions.push(configureCommand);
         return;
     }
 
-    // Initialize other services
-    const userService = new UserService();
-    const userId = await userService.initialize(context);
-    console.log(`User ID: ${userId.substring(0, 8)}...`);
-    console.log(`API Key: ${authService.getUserPrefix()}_***`);
-
-    const apiService = new ApiService(userId, authService.getApiKey());
-    const snippetCache = new SnippetCache();
-    await snippetCache.initialize(context);
-
-    const searchService = new SearchService(snippetCache, apiService);
-    const commandManager = new CommandManager(snippetCache, apiService, searchService, authService);
-    const completionProvider = new SnippetCompletionProvider(searchService);
+    const completionProvider = new SnippetCompletionProvider(searchService!);
 
     // Load initial snippets with error handling
     try {
-        const cachedSnippets = await apiService.fetchSnippets();
+        const cachedSnippets = await apiService!.fetchSnippets();
         commandManager.setCachedSnippets(cachedSnippets);
         console.log(`Loaded ${cachedSnippets.length} snippets for ${authService.getUserPrefix()}`);
         
@@ -75,33 +75,14 @@ export async function activate(context: vscode.ExtensionContext) {
             completionProvider
         );
 
-        // Register commands
-        commandManager.registerCommands(context);
-        
-        // Register reset API key command
-        const resetCommand = vscode.commands.registerCommand(
-            'yeap-front-snippets.resetApiKey',
-            async () => {
-                const confirmation = await vscode.window.showWarningMessage(
-                    'Are you sure you want to delete your API key?',
-                    { modal: true },
-                    'Yes, delete'
-                );
-                
-                if (confirmation === 'Yes, delete') {
-                    await authService.clearApiKey();
-                    vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
-                    vscode.commands.executeCommand('workbench.action.reloadWindow');
-                }
-            }
-        );
+        // Commands already registered during CommandManager creation
         
         const statusBarItem = createStatusBarItem();
         statusBarItem.text = `$(check) Yeap Snippets (${authService.getUserPrefix()})`;
         statusBarItem.tooltip = `Connected as ${authService.getUserPrefix()} - Click to refresh`;
 
         vscode.window.setStatusBarMessage(`Yeap Snippets: ${cachedSnippets.length} snippets loaded!`, 3000);
-        context.subscriptions.push(provider, statusBarItem, resetCommand);
+        context.subscriptions.push(provider, statusBarItem);
         
     } catch (error: any) {
         console.error('Error loading snippets:', error);
@@ -119,36 +100,7 @@ export async function activate(context: vscode.ExtensionContext) {
         } else {
             vscode.window.showWarningMessage('Unable to load snippets. Check your connection.');
             
-            // Register minimal functionality even if API fails
-            const configureCommand = vscode.commands.registerCommand(
-                'yeap-front-snippets.configureApiKey',
-                async () => {
-                    const success = await authService.promptForApiKey();
-                    if (success) {
-                        vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
-                        vscode.commands.executeCommand('workbench.action.reloadWindow');
-                    }
-                }
-            );
-            
-            const resetCommand = vscode.commands.registerCommand(
-                'yeap-front-snippets.resetApiKey',
-                async () => {
-                    const confirmation = await vscode.window.showWarningMessage(
-                        'Are you sure you want to delete your API key?',
-                        { modal: true },
-                        'Yes, delete'
-                    );
-                    
-                    if (confirmation === 'Yes, delete') {
-                        await authService.clearApiKey();
-                        vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
-                        vscode.commands.executeCommand('workbench.action.reloadWindow');
-                    }
-                }
-            );
-            
-            context.subscriptions.push(configureCommand, resetCommand);
+            // Commands are already registered at the beginning
         }
     }
 }
