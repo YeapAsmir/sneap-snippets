@@ -119,4 +119,49 @@ export class ApiService {
             return null;
         }
     }
+
+    async createSnippet(snippet: Omit<Snippet, 'id' | 'usageCount'>): Promise<Snippet | null> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/snippets`, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify(snippet)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create snippet: ${response.status} ${errorText}`);
+            }
+            
+            const data = await response.json() as { success: boolean; data: Snippet };
+            
+            if (data.success) {
+                return data.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to create snippet:', error);
+            return null;
+        }
+    }
+
+    async getCategories(): Promise<string[]> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/categories`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch categories');
+            }
+            
+            const data = await response.json() as { success: boolean; data: string[] };
+            
+            if (data.success) {
+                return data.data;
+            }
+            return [];
+        } catch (error) {
+            console.error('Failed to fetch categories:', error);
+            return [];
+        }
+    }
 }

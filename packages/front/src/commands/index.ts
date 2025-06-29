@@ -69,6 +69,11 @@ export class CommandManager {
             this.handleResetApiKey.bind(this)
         );
 
+        const createSnippetFromSelectionCommand = vscode.commands.registerCommand(
+            'sneap.createSnippetFromSelection',
+            this.handleCreateSnippetFromSelection.bind(this)
+        );
+
         context.subscriptions.push(
             refreshCommand,
             insertSnippetCommand,
@@ -76,7 +81,8 @@ export class CommandManager {
             trackUsageCommand,
             showUserStatsCommand,
             configureApiKeyCommand,
-            resetApiKeyCommand
+            resetApiKeyCommand,
+            createSnippetFromSelectionCommand
         );
     }
 
@@ -169,6 +175,133 @@ export class CommandManager {
             vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
             vscode.commands.executeCommand('workbench.action.reloadWindow');
         }
+    }
+
+    private async handleCreateSnippetFromSelection(): Promise<void> {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active editor found');
+            return;
+        }
+
+        const selection = editor.selection;
+        if (selection.isEmpty) {
+            vscode.window.showErrorMessage('Please select code to create a snippet');
+            return;
+        }
+
+        if (!this.apiService) {
+            vscode.window.showErrorMessage('Please configure your API key first');
+            return;
+        }
+
+        const selectedText = editor.document.getText(selection);
+        const fileExtension = editor.document.languageId;
+        
+        // Map language IDs to snippet scopes
+        const scope = this.getSnippetScope(fileExtension);
+
+        try {
+            // Prompt for snippet details
+            const name = await vscode.window.showInputBox({
+                prompt: 'Enter snippet name',
+                placeHolder: 'e.g., "Console Log"',
+                validateInput: (value) => value.trim() ? null : 'Name is required'
+            });
+
+            if (!name) return;
+
+            const prefix = await vscode.window.showInputBox({
+                prompt: 'Enter snippet prefix (trigger)',
+                placeHolder: 'e.g., "cl" for console.log',
+                validateInput: (value) => value.trim() ? null : 'Prefix is required'
+            });
+
+            if (!prefix) return;
+
+            const description = await vscode.window.showInputBox({
+                prompt: 'Enter snippet description',
+                placeHolder: 'e.g., "Quick console log statement"'
+            });
+
+            // Get existing categories from backend
+            let existingCategories: string[] = [];
+            try {
+                existingCategories = await this.apiService.getCategories();
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            }
+
+            // Add option to create new category
+            const categoryOptions = [
+                ...existingCategories,
+                '$(add) Create new category...'
+            ];
+
+            let category = await vscode.window.showQuickPick(categoryOptions, {
+                placeHolder: 'Select a category or create a new one',
+                canPickMany: false
+            });
+
+            // Handle new category creation
+            if (category === '$(add) Create new category...') {
+                const newCategory = await vscode.window.showInputBox({
+                    prompt: 'Enter new category name',
+                    placeHolder: 'e.g., "api", "ui-components"',
+                    validateInput: (value) => {
+                        if (!value.trim()) return 'Category name is required';
+                        if (existingCategories.includes(value.trim().toLowerCase())) {
+                            return 'Category already exists';
+                        }
+                        return null;
+                    }
+                });
+                category = newCategory?.trim();
+            }
+
+            if (!category) return; // User cancelled category selection
+
+            // Create snippet object
+            const snippet = {
+                name: name.trim(),
+                prefix: prefix.trim(),
+                body: selectedText.split('\n'),
+                description: description?.trim() || '',
+                scope,
+                category: category || 'general'
+            };
+
+            // Send to backend
+            const createdSnippet = await this.apiService.createSnippet(snippet);
+            
+            if (createdSnippet) {
+                vscode.window.showInformationMessage(
+                    `Snippet "${name}" created successfully!`,
+                    'Refresh Snippets'
+                ).then(selection => {
+                    if (selection === 'Refresh Snippets') {
+                        vscode.commands.executeCommand('sneap.refreshSnippets');
+                    }
+                });
+            } else {
+                vscode.window.showErrorMessage('Failed to create snippet');
+            }
+
+        } catch (error) {
+            console.error('Error creating snippet:', error);
+            vscode.window.showErrorMessage('Failed to create snippet');
+        }
+    }
+
+    private getSnippetScope(languageId: string): string[] {
+        const scopeMapping: Record<string, string[]> = {
+            'javascript': ['javascript', 'typescript'],
+            'typescript': ['javascript', 'typescript'],
+            'javascriptreact': ['javascriptreact', 'typescriptreact'],
+            'typescriptreact': ['javascriptreact', 'typescriptreact']
+        };
+
+        return scopeMapping[languageId] || [languageId];
     }
 
 }

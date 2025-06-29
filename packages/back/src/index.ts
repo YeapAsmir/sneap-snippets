@@ -414,6 +414,26 @@ server.delete('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (reques
   }
 });
 
+// Get unique categories from existing snippets
+server.get('/api/categories', async (request: any, reply) => {
+  await initializeServer();
+  
+  try {
+    const categories = await db.getUniqueCategories();
+    
+    return {
+      success: true,
+      data: categories,
+      count: categories.length
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch categories'
+    };
+  }
+});
+
 // CRUD Operations
 server.post('/api/snippets', async (request: any, reply) => {
   await initializeServer();

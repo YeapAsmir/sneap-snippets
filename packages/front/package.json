@@ -42,6 +42,10 @@
       {
         "command": "sneap.resetApiKey",
         "title": "Sneap: Reset API Key"
+      },
+      {
+        "command": "sneap.createSnippetFromSelection",
+        "title": "Sneap: Create snippet from selection"
       }
     ]
   },

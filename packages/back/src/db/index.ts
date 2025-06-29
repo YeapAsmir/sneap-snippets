@@ -316,6 +316,16 @@ export class DrizzleDatabase {
     return `${prefix}_${timestamp}${random}`;
   }
 
+  async getUniqueCategories(): Promise<string[]> {
+    const result = await this.db
+      .selectDistinct({ category: snippets.category })
+      .from(snippets)
+      .where(sql`${snippets.category} IS NOT NULL AND ${snippets.category} != ''`)
+      .orderBy(snippets.category);
+    
+    return result.map(row => row.category).filter((category): category is string => category !== null);
+  }
+
   async close(): Promise<void> {
     this.sqlite.close();
   }

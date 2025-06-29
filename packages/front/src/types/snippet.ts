@@ -5,6 +5,7 @@ export interface Snippet {
     body: string[];
     description: string;
     scope?: string[];
+    category?: string;
     usageCount?: number;
 }
 
