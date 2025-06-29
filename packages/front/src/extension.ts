@@ -1,11 +1,12 @@
-import * as vscode from 'vscode';
-import { SnippetCache } from './cache';
-import { CommandManager } from './commands';
+// Misc
+import * as vscode                   from 'vscode';
+import { SnippetCache }              from './cache';
+import { CommandManager }            from './commands';
 import { SnippetCompletionProvider } from './providers/completion';
-import { ApiService } from './services/api';
-import { SearchService } from './services/search';
-import { UserService } from './services/user';
-import { AuthService } from './services/auth';
+import { ApiService }                from './services/api';
+import { AuthService }               from './services/auth';
+import { SearchService }             from './services/search';
+import { UserService }               from './services/user';
 
 function createStatusBarItem(): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -25,10 +26,10 @@ export async function activate(context: vscode.ExtensionContext) {
     
     if (!isAuthenticated) {
         vscode.window.showWarningMessage(
-            'Yeap Snippets: Cle API requise',
-            'Configurer maintenant'
+            'Yeap Snippets: API key required',
+            'Configure now'
         ).then(selection => {
-            if (selection === 'Configurer maintenant') {
+            if (selection === 'Configure now') {
                 vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
             }
         });
@@ -39,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
             async () => {
                 const success = await authService.promptForApiKey();
                 if (success) {
-                    vscode.window.showInformationMessage('Cle API configuree! Redemarrage de VS Code...');
+                    vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
                     vscode.commands.executeCommand('workbench.action.reloadWindow');
                 }
             }
@@ -82,14 +83,14 @@ export async function activate(context: vscode.ExtensionContext) {
             'yeap-front-snippets.resetApiKey',
             async () => {
                 const confirmation = await vscode.window.showWarningMessage(
-                    'Etes-vous sur de vouloir supprimer votre cle API ?',
+                    'Are you sure you want to delete your API key?',
                     { modal: true },
-                    'Oui, supprimer'
+                    'Yes, delete'
                 );
                 
-                if (confirmation === 'Oui, supprimer') {
+                if (confirmation === 'Yes, delete') {
                     await authService.clearApiKey();
-                    vscode.window.showInformationMessage('Cle API supprimee. Redemarrage de VS Code...');
+                    vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
                     vscode.commands.executeCommand('workbench.action.reloadWindow');
                 }
             }
@@ -107,16 +108,16 @@ export async function activate(context: vscode.ExtensionContext) {
         
         if (error.message === 'Invalid API key') {
             vscode.window.showErrorMessage(
-                'Cle API invalide ou expiree',
-                'Reconfigurer'
+                'Invalid, expired or disabled API key',
+                'Reconfigure'
             ).then(selection => {
-                if (selection === 'Reconfigurer') {
+                if (selection === 'Reconfigure') {
                     vscode.commands.executeCommand('yeap-front-snippets.configureApiKey');
                 }
             });
             return;
         } else {
-            vscode.window.showWarningMessage('Impossible de charger les snippets. Verifiez votre connexion.');
+            vscode.window.showWarningMessage('Unable to load snippets. Check your connection.');
             
             // Register minimal functionality even if API fails
             const configureCommand = vscode.commands.registerCommand(
@@ -124,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 async () => {
                     const success = await authService.promptForApiKey();
                     if (success) {
-                        vscode.window.showInformationMessage('Cle API configuree! Redemarrage de VS Code...');
+                        vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
                         vscode.commands.executeCommand('workbench.action.reloadWindow');
                     }
                 }
@@ -134,14 +135,14 @@ export async function activate(context: vscode.ExtensionContext) {
                 'yeap-front-snippets.resetApiKey',
                 async () => {
                     const confirmation = await vscode.window.showWarningMessage(
-                        'Etes-vous sur de vouloir supprimer votre cle API ?',
+                        'Are you sure you want to delete your API key?',
                         { modal: true },
-                        'Oui, supprimer'
+                        'Yes, delete'
                     );
                     
-                    if (confirmation === 'Oui, supprimer') {
+                    if (confirmation === 'Yes, delete') {
                         await authService.clearApiKey();
-                        vscode.window.showInformationMessage('Cle API supprimee. Redemarrage de VS Code...');
+                        vscode.window.showInformationMessage('API key deleted. Restarting VS Code...');
                         vscode.commands.executeCommand('workbench.action.reloadWindow');
                     }
                 }
