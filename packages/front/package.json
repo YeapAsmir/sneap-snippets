@@ -29,6 +29,10 @@
       {
         "command": "yeap-front-snippets.clearCache",
         "title": "Yeap Snippets: Clear Cache"
+      },
+      {
+        "command": "yeap-front-snippets.showUserStats",
+        "title": "Yeap Snippets: Show My Stats"
       }
     ]
   },

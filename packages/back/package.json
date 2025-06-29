@@ -5,13 +5,20 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "studio": "drizzle-kit studio --config drizzle.config.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@types/sqlite3": "^3.1.11",
+    "better-sqlite3": "^12.2.0",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.2",
     "fastify": "^4.26.0",
-    "@fastify/cors": "^9.0.0"
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"

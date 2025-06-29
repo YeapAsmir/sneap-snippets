@@ -3,17 +3,20 @@ import * as vscode      from 'vscode';
 import { SnippetCache } from './cache';
 
 interface Snippet {
+    id?: number;
     name: string;
     prefix: string;
     body: string[];
     description: string;
     scope?: string[];
+    usageCount?: number;
 }
 
 let cachedSnippets: Snippet[] = [];
 let searchCache = new Map<string, Snippet[]>();
 let debounceTimers = new Map<string, NodeJS.Timeout>();
 let snippetCache: SnippetCache;
+let userId: string;
 
 // Debounce function for search requests
 function debounce<T extends (...args: any[]) => any>(
@@ -41,16 +44,40 @@ function debounce<T extends (...args: any[]) => any>(
 
 async function fetchSnippets(): Promise<Snippet[]> {
     try {
-        const response = await fetch('http://localhost:3000/api/snippets');
+        const url = `http://localhost:3000/api/snippets?userId=${userId}&limit=100`;
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch snippets');
         }
-        const data = await response.json() as { data: Snippet[] };
+        const data = await response.json() as { data: Snippet[], personalized: boolean };
+        console.log(`Loaded ${data.data.length} ${data.personalized ? 'personalized' : 'popular'} snippets`);
         return data.data || [];
     } catch (error) {
         console.error('Error fetching snippets:', error);
         vscode.window.showWarningMessage('Failed to fetch snippets from server. Using offline mode.');
         return [];
+    }
+}
+
+async function trackUsage(snippetId: number, language: string, searchTime: number, wasAccepted: boolean = true): Promise<void> {
+    try {
+        const activeEditor = vscode.window.activeTextEditor;
+        const fileExtension = activeEditor?.document.fileName.split('.').pop();
+        
+        await fetch('http://localhost:3000/api/snippets/usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                snippetId,
+                userId,
+                language,
+                fileExtension,
+                searchTime,
+                wasAccepted
+            })
+        });
+    } catch (error) {
+        console.error('Failed to track usage:', error);
     }
 }
 
@@ -130,16 +157,26 @@ async function searchSnippetsInternal(query: string, language: string, prefix?: 
 // Debounced version of search
 const searchSnippets = debounce(searchSnippetsInternal, 300, 'search');
 
+function generateUserId(): string {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     console.log('Yeap Front Snippets is now active!');
+
+    // Generate or retrieve user ID for analytics
+    userId = context.globalState.get('yeap-user-id') || generateUserId();
+    if (!context.globalState.get('yeap-user-id')) {
+        await context.globalState.update('yeap-user-id', userId);
+    }
 
     // Initialize multi-level cache
     snippetCache = new SnippetCache();
     await snippetCache.initialize(context);
 
-    // Load snippets synchronously during activation
+    // Load personalized snippets
     cachedSnippets = await fetchSnippets();
-    console.log(`Loaded ${cachedSnippets.length} snippets from server`);
+    console.log(`Loaded ${cachedSnippets.length} snippets for user ${userId.substring(0, 8)}...`);
 
     const refreshCommand = vscode.commands.registerCommand('yeap-front-snippets.refreshSnippets', async () => {
         const snippets = await fetchSnippets();
@@ -163,13 +200,21 @@ export async function activate(context: vscode.ExtensionContext) {
                 
                 const completions: vscode.CompletionItem[] = [];
 
-                // Add all snippets from server
+                // Add all snippets from server with usage tracking
                 searchResults.forEach(snippet => {
                     const completion = new vscode.CompletionItem(snippet.prefix, vscode.CompletionItemKind.Snippet);
                     completion.insertText = new vscode.SnippetString(snippet.body.join('\n'));
                     completion.documentation = new vscode.MarkdownString(`**${snippet.name}**\n\n${snippet.description}`);
                     completion.detail = snippet.name;
                     completion.sortText = `0_${snippet.prefix}`;
+                    
+                    // Add usage tracking on completion
+                    completion.command = {
+                        command: 'yeap-front-snippets.trackUsage',
+                        title: 'Track Usage',
+                        arguments: [snippet.id, languageId, Date.now()]
+                    };
+                    
                     completions.push(completion);
                 });
 
@@ -203,7 +248,33 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Snippet cache cleared!');
     });
 
-    context.subscriptions.push(disposable, clearCacheCommand);
+    const trackUsageCommand = vscode.commands.registerCommand('yeap-front-snippets.trackUsage', async (snippetId: number, language: string, startTime: number) => {
+        const searchTime = Date.now() - startTime;
+        await trackUsage(snippetId, language, searchTime, true);
+        console.log(`Tracked usage: snippet ${snippetId}, language ${language}, searchTime ${searchTime}ms`);
+    });
+
+    const showUserStatsCommand = vscode.commands.registerCommand('yeap-front-snippets.showUserStats', async () => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/users/${userId}/stats`);
+            const data = await response.json() as { success: boolean; data: any };
+            
+            if (data.success) {
+                const stats = data.data;
+                const favLangs = stats.favoriteLanguages?.map((l: any) => `${l.language} (${l.count})`).join(', ') || 'None yet';
+                const message = `📊 Your Snippet Stats:
+• Total usage: ${stats.totalUsage || 0}
+• Favorite languages: ${favLangs}
+• Avg search time: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
+                
+                vscode.window.showInformationMessage(message);
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage('Failed to load user stats');
+        }
+    });
+
+    context.subscriptions.push(disposable, clearCacheCommand, trackUsageCommand, showUserStatsCommand);
 }
 
 export function deactivate() {}
