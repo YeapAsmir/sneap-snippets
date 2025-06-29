@@ -61,8 +61,7 @@ export const apiKeys = sqliteTable('api_keys', {
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
-  createdBy: text('created_by').default('admin'),
-  notes: text('notes'), // Admin notes
+  createdBy: text('created_by').default('admin')
 });
 
 // Export types

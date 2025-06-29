@@ -357,7 +357,7 @@ server.get('/admin/api-keys', { preHandler: adminAuth }, async (request: any, re
 server.post('/admin/api-keys', { preHandler: adminAuth }, async (request: any, reply) => {
   await initializeServer();
   
-  const { userName, prefix, notes } = request.body;
+  const { userName, prefix } = request.body;
   
   if (!userName || !prefix) {
     return {
@@ -371,8 +371,7 @@ server.post('/admin/api-keys', { preHandler: adminAuth }, async (request: any, r
     const newKey = await db.createApiKey({
       keyId,
       userName,
-      prefix,
-      notes: notes || undefined
+      prefix
     });
     
     return {
