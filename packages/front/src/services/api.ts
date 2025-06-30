@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import { Snippet, SearchResponse, UsageMetric, UserStats } from '../types/snippet';
 
 const API_BASE_URL = 'http://localhost:3000';
@@ -22,14 +21,11 @@ export class ApiService {
     async fetchSnippets(): Promise<Snippet[]> {
         try {
             const url = `${API_BASE_URL}/api/snippets?userId=${this.userId}&limit=100`;
-            console.log('Fetching snippets from:', url);
-            console.log('Headers:', this.getHeaders());
             
             const response = await fetch(url, {
                 headers: this.getHeaders()
             });
             
-            console.log('Response status:', response.status);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -42,7 +38,6 @@ export class ApiService {
             }
             
             const data = await response.json() as { data: Snippet[], personalized: boolean };
-            console.log(`Loaded ${data.data.length} ${data.personalized ? 'personalized' : 'popular'} snippets`);
             return data.data || [];
         } catch (error) {
             console.error('Error fetching snippets:', error);
@@ -78,7 +73,6 @@ export class ApiService {
             
             // Log performance metrics
             if (data.meta?.searchTime) {
-                console.log(`Search completed in ${data.meta.searchTime}`);
             }
             
             return data.data || [];

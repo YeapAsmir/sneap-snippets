@@ -109,7 +109,6 @@ export class CommandManager {
     }
 
     private async handleClearCache(): Promise<void> {
-        console.log('Clear cache command executed');
         await this.snippetCache.clear();
         vscode.window.showInformationMessage('Snippet cache cleared!');
     }
@@ -129,7 +128,6 @@ export class CommandManager {
             wasAccepted: true
         });
         
-        console.log(`Tracked usage: snippet ${snippetId}, language ${language}, searchTime ${searchTime}ms`);
     }
 
     private async handleShowUserStats(): Promise<void> {
@@ -159,7 +157,6 @@ export class CommandManager {
     }
 
     private async handleConfigureApiKey(): Promise<void> {
-        console.log('Configure command executed');
         const success = await this.authService.promptForApiKey();
         if (success) {
             vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
@@ -168,7 +165,6 @@ export class CommandManager {
     }
 
     private async handleResetApiKey(): Promise<void> {
-        console.log('Reset command executed');
         const confirmation = await vscode.window.showWarningMessage(
             'Are you sure you want to delete your API key?',
             { modal: true },
