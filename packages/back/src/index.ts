@@ -62,10 +62,8 @@ async function initializeServer() {
   allSnippets.forEach((snippet) => {
     // Parse JSON fields for Trie
     const snippetForTrie = {
-      ...snippet,
-      id: snippet.id!,
-      body: JSON.parse(snippet.body),
-      scope: snippet.scope ? JSON.parse(snippet.scope) : undefined
+      ...db.transformSnippetForClient(snippet),
+      id: snippet.id!
     };
     snippetTrie.insert(snippetForTrie, snippet.id!);
   });
@@ -227,11 +225,7 @@ server.get('/api/snippets', { preHandler: validateApiKey }, async (request: any,
   }
   
   // Transform JSON fields for client
-  const transformedSnippets = snippets.map(s => ({
-    ...s,
-    body: JSON.parse(s.body),
-    scope: s.scope ? JSON.parse(s.scope) : undefined
-  }));
+  const transformedSnippets = db.transformSnippetsForClient(snippets);
 
   return {
     success: true,
@@ -296,11 +290,7 @@ server.get('/api/snippets/search', { preHandler: validateApiKey }, async (reques
   const results = await db.searchSnippets(q, language, parseInt(limit));
   
   // Transform for client
-  const transformedResults = results.map(s => ({
-    ...s,
-    body: JSON.parse(s.body),
-    scope: s.scope ? JSON.parse(s.scope) : undefined
-  }));
+  const transformedResults = db.transformSnippetsForClient(results);
   
   const searchTime = Date.now() - startTime;
 
@@ -494,11 +484,7 @@ server.get('/admin/stats', { preHandler: validateJWT }, async (request: any, rep
         snippets: snippetStats,
         usage: usageStats,
         categories: categoryStats,
-        popular: popularSnippets.map(s => ({
-          ...s,
-          body: JSON.parse(s.body),
-          scope: s.scope ? JSON.parse(s.scope) : undefined
-        }))
+        popular: db.transformSnippetsForClient(popularSnippets)
       }
     };
   } catch (error: any) {
@@ -543,21 +529,18 @@ server.post('/api/snippets', async (request: any, reply) => {
   }
 
   try {
-    const newSnippet = await db.createSnippet({
+    const preparedData = db.prepareSnippetForStorage({
       name,
       prefix,
-      body: JSON.stringify(body),
+      body,
       description,
-      scope: scope ? JSON.stringify(scope) : undefined,
+      scope,
       category: category || 'general'
     });
+    const newSnippet = await db.createSnippet(preparedData);
 
     // Add to Trie for immediate search availability
-    const snippetForTrie = {
-      ...newSnippet,
-      body: JSON.parse(newSnippet.body),
-      scope: newSnippet.scope ? JSON.parse(newSnippet.scope) : undefined
-    };
+    const snippetForTrie = db.transformSnippetForClient(newSnippet);
     snippetTrie.insert(snippetForTrie, newSnippet.id!);
 
     return {
@@ -580,19 +563,14 @@ server.put('/api/snippets/:id', async (request: any, reply) => {
   const updates = request.body;
   
   // Transform arrays to JSON strings for storage
-  if (updates.body) updates.body = JSON.stringify(updates.body);
-  if (updates.scope) updates.scope = JSON.stringify(updates.scope);
+  const preparedUpdates = db.prepareSnippetForStorage(updates);
   
   try {
-    const updated = await db.updateSnippet(parseInt(id), updates);
+    const updated = await db.updateSnippet(parseInt(id), preparedUpdates);
     
     if (updated) {
       // Transform for response
-      const responseSnippet = {
-        ...updated,
-        body: JSON.parse(updated.body),
-        scope: updated.scope ? JSON.parse(updated.scope) : undefined
-      };
+      const responseSnippet = db.transformSnippetForClient(updated);
       
       return {
         success: true,

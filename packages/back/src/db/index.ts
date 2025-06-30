@@ -9,6 +9,26 @@ export class DrizzleDatabase {
   private db: ReturnType<typeof drizzle>;
   private sqlite: Database.Database;
 
+  // Helper methods to reduce code duplication
+  transformSnippetForClient(snippet: Snippet): any {
+    return {
+      ...snippet,
+      body: JSON.parse(snippet.body),
+      scope: snippet.scope ? JSON.parse(snippet.scope) : undefined
+    };
+  }
+
+  transformSnippetsForClient(snippets: Snippet[]): any[] {
+    return snippets.map(s => this.transformSnippetForClient(s));
+  }
+
+  prepareSnippetForStorage(snippetData: any): any {
+    const prepared = { ...snippetData };
+    if (prepared.body) prepared.body = JSON.stringify(prepared.body);
+    if (prepared.scope) prepared.scope = JSON.stringify(prepared.scope);
+    return prepared;
+  }
+
   constructor(dbPath: string = './snippets.db') {
     this.sqlite = new Database(dbPath);
     this.db = drizzle(this.sqlite);
@@ -240,14 +260,15 @@ export class DrizzleDatabase {
       const { snippets: seedSnippets } = await import('../snippets');
       
       for (const snippet of seedSnippets) {
-        await this.createSnippet({
+        const preparedSnippet = this.prepareSnippetForStorage({
           name: snippet.name,
           prefix: snippet.prefix,
-          body: JSON.stringify(snippet.body),
+          body: snippet.body,
           description: snippet.description,
-          scope: snippet.scope ? JSON.stringify(snippet.scope) : undefined,
+          scope: snippet.scope,
           category: this.categorizeSnippet(snippet.name)
         });
+        await this.createSnippet(preparedSnippet);
       }
       
       console.log(`✅ Seeded ${seedSnippets.length} snippets with Drizzle ORM`);

@@ -36,6 +36,13 @@
       "when": 1751228119449,
       "tag": "0004_lean_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1751285225845,
+      "tag": "0005_square_marauders",
+      "breakpoints": true
     }
   ]
 }

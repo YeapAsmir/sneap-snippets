@@ -9,7 +9,6 @@ export const snippets = sqliteTable('snippets', {
   description: text('description').notNull(),
   scope: text('scope'), // JSON string array or null
   category: text('category').default('general'),
-  tags: text('tags'), // JSON string array
   
   // Usage tracking
   usageCount: integer('usage_count').default(0),
@@ -17,12 +16,7 @@ export const snippets = sqliteTable('snippets', {
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at').default(sql`(unixepoch())`),
-  createdBy: text('created_by').default('system'),
-  
-  // Performance metrics
-  avgCompletionTime: real('avg_completion_time').default(0), // milliseconds
-  successRate: real('success_rate').default(1.0), // 0-1
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`)
 });
 
 export const usageMetrics = sqliteTable('usage_metrics', {
@@ -33,14 +27,11 @@ export const usageMetrics = sqliteTable('usage_metrics', {
   // Usage context
   language: text('language').notNull(),
   fileExtension: text('file_extension'),
-  projectType: text('project_type'), // react, node, etc.
   
   // Performance data
   searchTime: real('search_time'), // ms to find snippet
-  completionTime: real('completion_time'), // ms to accept snippet
   
   // Context data
-  triggerPrefix: text('trigger_prefix'), // What user typed
   wasAccepted: integer('was_accepted', { mode: 'boolean' }).default(true),
   
   timestamp: integer('timestamp').default(sql`(unixepoch())`),
@@ -58,8 +49,7 @@ export const apiKeys = sqliteTable('api_keys', {
   usageCount: integer('usage_count').default(0),
   
   // Metadata
-  createdAt: integer('created_at').default(sql`(unixepoch())`),
-  createdBy: text('created_by').default('admin')
+  createdAt: integer('created_at').default(sql`(unixepoch())`)
 });
 
 // Export types
