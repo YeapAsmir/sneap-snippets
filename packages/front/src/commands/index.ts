@@ -33,7 +33,6 @@ export class CommandManager {
     }
 
     registerCommands(context: vscode.ExtensionContext): void {
-        console.log('CommandManager: Registering commands...');
         const refreshCommand = vscode.commands.registerCommand(
             'sneap.refreshSnippets', 
             this.handleRefreshSnippets.bind(this)

@@ -70,8 +70,5 @@
     "@vscode/test-electron": "^2.3.2",
     "eslint": "^8.41.0",
     "typescript": "^5.1.3"
-  },
-  "dependencies": {
-    "@fastify/static": "^8.2.0"
   }
 }

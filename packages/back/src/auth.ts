@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sneap-secret-key-change-this-in-production';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'sneap-refresh-secret-change-this-in-production';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mUQY8CwA44xdxbegJNU665cCZuYmyJ/wYcjYl99Zx6E=';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || bcryptjs.hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10);
 

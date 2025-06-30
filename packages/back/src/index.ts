@@ -101,6 +101,19 @@ server.get('/login', async (request, reply) => {
   }
 });
 
+// Info/Documentation page route (no auth required)
+server.get('/info', async (request, reply) => {
+  const fs = require('fs');
+  const infoHtmlPath = path.join(__dirname, '../public/info.html');
+  
+  try {
+    const htmlContent = fs.readFileSync(infoHtmlPath, 'utf8');
+    reply.type('text/html').send(htmlContent);
+  } catch (error) {
+    reply.status(404).send('Documentation page not found');
+  }
+});
+
 // Authentication endpoints
 server.post('/auth/login', async (request: any, reply) => {
   const { username, password, rememberMe } = request.body;

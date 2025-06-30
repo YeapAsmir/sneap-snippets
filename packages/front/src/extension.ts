@@ -18,7 +18,6 @@ function createStatusBarItem(): vscode.StatusBarItem {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Sneap Front Snippets is now active!');
 
     // Initialize authentication first
     const authService = new AuthService();
@@ -38,8 +37,6 @@ export async function activate(context: vscode.ExtensionContext) {
         const userPrefix = authService.getUserPrefix();
         userService.setUserId(userPrefix);
         const userId = userService.getUserId();
-        console.log(`User ID: ${userId}`);
-        console.log(`API Key: ${userPrefix}_***`);
 
         apiService = new ApiService(userId, authService.getApiKey());
         searchService = new SearchService(snippetCache, apiService);
@@ -67,7 +64,6 @@ export async function activate(context: vscode.ExtensionContext) {
     try {
         const cachedSnippets = await apiService!.fetchSnippets();
         commandManager.setCachedSnippets(cachedSnippets);
-        console.log(`Loaded ${cachedSnippets.length} snippets for ${authService.getUserPrefix()}`);
         
         // Register completion provider
         const provider = vscode.languages.registerCompletionItemProvider(

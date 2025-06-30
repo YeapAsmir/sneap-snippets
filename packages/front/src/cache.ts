@@ -24,7 +24,6 @@ export class SnippetCache {
 
     async initialize(context: vscode.ExtensionContext): Promise<void> {
         this.context = context;
-        console.log('VS Code storage cache initialized');
         
         // Load frequently used snippets into memory
         await this.loadHotSnippets();
