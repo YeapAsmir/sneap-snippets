@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1751194936238,
-      "tag": "0000_chunky_nighthawk",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1751219667358,
-      "tag": "0001_daffy_celestials",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1751225166605,
-      "tag": "0002_supreme_eternals",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1751226502241,
-      "tag": "0003_dark_vargas",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1751228119449,
-      "tag": "0004_lean_zaran",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1751285225845,
-      "tag": "0005_square_marauders",
+      "when": 1751287128171,
+      "tag": "0000_chubby_brood",
       "breakpoints": true
     }
   ]

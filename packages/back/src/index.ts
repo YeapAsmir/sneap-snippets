@@ -2,9 +2,12 @@
 import cors                from '@fastify/cors';
 import fastify             from 'fastify';
 import path                from 'path';
+import {
+    AuthService,
+    validateJWT
+}                          from './auth';
 import { DrizzleDatabase } from './db';
 import { SnippetTrie }     from './trie';
-import { AuthService, validateJWT } from './auth';
 import 'dotenv/config';
 
 const server = fastify({
@@ -353,6 +356,25 @@ server.get('/api/users/:userId/stats', { preHandler: validateApiKey }, async (re
   };
 });
 
+// Get snippet with creator information
+server.get('/api/snippets/:id', { preHandler: validateApiKey }, async (request: any, reply) => {
+  
+  const { id } = request.params;
+  const snippet = await db.getSnippetWithCreator(parseInt(id));
+  
+  if (!snippet) {
+    return {
+      success: false,
+      error: 'Snippet not found'
+    };
+  }
+  
+  return {
+    success: true,
+    data: snippet
+  };
+});
+
 // Get snippet-specific analytics
 server.get('/api/snippets/:id/analytics', { preHandler: validateApiKey }, async (request: any, reply) => {
   
@@ -516,26 +538,33 @@ server.get('/api/categories', async (request: any, reply) => {
 });
 
 // CRUD Operations
-server.post('/api/snippets', async (request: any, reply) => {
+server.post('/api/snippets', { preHandler: validateApiKey }, async (request: any, reply) => {
   await initializeServer();
   
-  const { name, prefix, body, description, scope, category } = request.body;
+  console.log('DEBUG - POST /api/snippets received:', {
+    headers: request.headers,
+    body: request.body,
+    user: request.user
+  });
   
-  if (!name || !prefix || !body || !description) {
+  const { prefix, body, description, scope, category } = request.body;
+  
+  if (!prefix || !body || description === undefined || description === null) {
     return {
       success: false,
-      error: 'Missing required fields: name, prefix, body, description'
+      error: 'Missing required fields: prefix, body, description'
     };
   }
 
   try {
     const preparedData = db.prepareSnippetForStorage({
-      name,
+      name: prefix,
       prefix,
       body,
       description,
       scope,
-      category: category || 'general'
+      category: category || 'general',
+      createdBy: request.user.keyId // Use authenticated user's keyId
     });
     const newSnippet = await db.createSnippet(preparedData);
 
@@ -549,6 +578,7 @@ server.post('/api/snippets', async (request: any, reply) => {
       message: 'Snippet created successfully'
     };
   } catch (error: any) {
+    console.log('Error creating snippet:', error);
     return {
       success: false,
       error: error.message || 'Failed to create snippet'
@@ -556,7 +586,7 @@ server.post('/api/snippets', async (request: any, reply) => {
   }
 });
 
-server.put('/api/snippets/:id', async (request: any, reply) => {
+server.put('/api/snippets/:id', { preHandler: validateApiKey }, async (request: any, reply) => {
   await initializeServer();
   
   const { id } = request.params;
@@ -591,7 +621,7 @@ server.put('/api/snippets/:id', async (request: any, reply) => {
   }
 });
 
-server.delete('/api/snippets/:id', async (request: any, reply) => {
+server.delete('/api/snippets/:id', { preHandler: validateApiKey }, async (request: any, reply) => {
   await initializeServer();
   
   const { id } = request.params;

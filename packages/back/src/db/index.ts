@@ -45,6 +45,7 @@ export class DrizzleDatabase {
     migrate(this.db, { migrationsFolder: './drizzle' });
     console.log('✅ Migrations complete');
     
+    await this.ensureSystemApiKey();
     await this.seedInitialData();
     
     const count = await this.getSnippetCount();
@@ -60,6 +61,28 @@ export class DrizzleDatabase {
   async getSnippetById(id: number): Promise<Snippet | null> {
     const [snippet] = await this.db.select().from(snippets).where(eq(snippets.id, id));
     return snippet || null;
+  }
+
+  async getSnippetWithCreator(id: number): Promise<any | null> {
+    const [result] = await this.db
+      .select({
+        snippet: snippets,
+        creator: {
+          keyId: apiKeys.keyId,
+          userName: apiKeys.userName,
+          prefix: apiKeys.prefix
+        }
+      })
+      .from(snippets)
+      .leftJoin(apiKeys, eq(snippets.createdBy, apiKeys.keyId))
+      .where(eq(snippets.id, id));
+
+    if (!result) return null;
+
+    return {
+      ...this.transformSnippetForClient(result.snippet),
+      creator: result.creator
+    };
   }
 
   async updateSnippet(id: number, updates: Partial<NewSnippet>): Promise<Snippet | null> {
@@ -248,6 +271,23 @@ export class DrizzleDatabase {
   private async getSnippetCount(): Promise<number> {
     const result = await this.db.select({ count: count() }).from(snippets);
     return result[0]?.count || 0;
+  }
+
+  private async ensureSystemApiKey(): Promise<void> {
+    const [existingSystemKey] = await this.db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.keyId, 'system'));
+
+    if (!existingSystemKey) {
+      console.log('🔑 Creating system API key for seeded snippets...');
+      await this.db.insert(apiKeys).values({
+        keyId: 'system',
+        userName: 'System',
+        prefix: 'sys',
+        isActive: true
+      });
+    }
   }
 
   private async seedInitialData(): Promise<void> {

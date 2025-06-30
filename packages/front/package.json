@@ -49,7 +49,7 @@
       },
       {
         "command": "sneap.deleteSnippetByName",
-        "title": "Sneap: Delete Snippet by Name/Prefix"
+        "title": "Sneap: Delete snippet by prefix"
       }
     ]
   },

@@ -14,7 +14,7 @@ export class ApiService {
     private getHeaders(): Record<string, string> {
         return {
             'Content-Type': 'application/json',
-            'X-API-Key': this.apiKey
+            'x-api-key': this.apiKey
         };
     }
 
@@ -132,10 +132,10 @@ export class ApiService {
             if (data.success) {
                 return data.data;
             }
-            return null;
+            throw new Error('Server returned success: false');
         } catch (error) {
             console.error('Failed to create snippet:', error);
-            return null;
+            throw error; // Re-throw instead of returning null
         }
     }
 

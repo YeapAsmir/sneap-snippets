@@ -1,3 +1,14 @@
+CREATE TABLE `api_keys` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`key_id` text NOT NULL,
+	`user_name` text NOT NULL,
+	`prefix` text NOT NULL,
+	`is_active` integer DEFAULT true,
+	`usage_count` integer DEFAULT 0,
+	`created_at` integer DEFAULT (unixepoch())
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `api_keys_key_id_unique` ON `api_keys` (`key_id`);--> statement-breakpoint
 CREATE TABLE `snippets` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
@@ -6,14 +17,12 @@ CREATE TABLE `snippets` (
 	`description` text NOT NULL,
 	`scope` text,
 	`category` text DEFAULT 'general',
-	`tags` text,
 	`usage_count` integer DEFAULT 0,
 	`last_used` integer DEFAULT (unixepoch()),
 	`created_at` integer DEFAULT (unixepoch()),
 	`updated_at` integer DEFAULT (unixepoch()),
 	`created_by` text DEFAULT 'system',
-	`avg_completion_time` real DEFAULT 0,
-	`success_rate` real DEFAULT 1
+	FOREIGN KEY (`created_by`) REFERENCES `api_keys`(`key_id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `snippets_prefix_unique` ON `snippets` (`prefix`);--> statement-breakpoint
@@ -23,26 +32,8 @@ CREATE TABLE `usage_metrics` (
 	`user_id` text NOT NULL,
 	`language` text NOT NULL,
 	`file_extension` text,
-	`project_type` text,
 	`search_time` real,
-	`completion_time` real,
-	`trigger_prefix` text,
 	`was_accepted` integer DEFAULT true,
 	`timestamp` integer DEFAULT (unixepoch()),
 	FOREIGN KEY (`snippet_id`) REFERENCES `snippets`(`id`) ON UPDATE no action ON DELETE cascade
 );
---> statement-breakpoint
-CREATE TABLE `user_preferences` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`user_id` text NOT NULL,
-	`favorite_categories` text,
-	`excluded_categories` text,
-	`custom_keywords` text,
-	`avg_session_length` real DEFAULT 0,
-	`preferred_languages` text,
-	`typing_speed` real DEFAULT 50,
-	`last_active` integer DEFAULT (unixepoch()),
-	`created_at` integer DEFAULT (unixepoch())
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `user_preferences_user_id_unique` ON `user_preferences` (`user_id`);

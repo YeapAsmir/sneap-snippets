@@ -268,18 +268,14 @@ export class CommandManager {
             // Send to backend
             const createdSnippet = await this.apiService.createSnippet(snippet);
             
-            if (createdSnippet) {
-                vscode.window.showInformationMessage(
-                    `Snippet with prefix "${prefix}" created successfully!`,
-                    'Refresh Snippets'
-                ).then(selection => {
-                    if (selection === 'Refresh Snippets') {
-                        vscode.commands.executeCommand('sneap.refreshSnippets');
-                    }
-                });
-            } else {
-                vscode.window.showErrorMessage('Failed to create snippet');
-            }
+            vscode.window.showInformationMessage(
+                `Snippet with prefix "${prefix}" created successfully!`,
+                'Refresh Snippets'
+            ).then(selection => {
+                if (selection === 'Refresh Snippets') {
+                    vscode.commands.executeCommand('sneap.refreshSnippets');
+                }
+            });
 
         } catch (error) {
             console.error('Error creating snippet:', error);
@@ -348,18 +344,15 @@ export class CommandManager {
             }
 
             // Show confirmation with snippet details
-            const confirmMessage = `Are you sure you want to delete this snippet?
-Name: ${selectedSnippet.name || 'Unnamed'}
-Prefix: ${selectedSnippet.prefix}
-Description: ${selectedSnippet.description}`;
+            const confirmMessage = `Are you sure you want to delete ${selectedSnippet.prefix} snippet? `;
 
             const confirmation = await vscode.window.showWarningMessage(
                 confirmMessage,
                 { modal: true },
-                'Yes, delete it'
+                'Yes'
             );
 
-            if (confirmation !== 'Yes, delete it') return;
+            if (confirmation !== 'Yes') return;
 
             // Delete the snippet
             if (selectedSnippet.id) {

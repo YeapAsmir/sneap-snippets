@@ -16,7 +16,8 @@ export const snippets = sqliteTable('snippets', {
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
-  updatedAt: integer('updated_at').default(sql`(unixepoch())`)
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`),
+  createdBy: text('created_by').references(() => apiKeys.keyId).default('system')
 });
 
 export const usageMetrics = sqliteTable('usage_metrics', {

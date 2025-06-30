@@ -6,7 +6,9 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "studio": "drizzle-kit studio --config drizzle.config.ts"
+    "studio": "drizzle-kit studio --config drizzle.config.ts",
+    "seed": "tsx src/seed.ts",
+    "db:reset": "rm -f snippets.db && npm run seed"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",
