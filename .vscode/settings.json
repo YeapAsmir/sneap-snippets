@@ -5,6 +5,13 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "**/node_modules": true
-    }
+        "**/node_modules": true,
+        "dist": true, // exclude dist folder from file explorer
+        "out": true, // exclude out folder from file explorer
+    },
+    "search.exclude": {
+        "out": true // set this to false to include "out" folder in search results
+    },
+    // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
+    "typescript.tsc.autoDetect": "off"
 }

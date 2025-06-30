@@ -179,9 +179,11 @@ export class CommandManager {
             // Test API key validity with progress notification
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Verifying API key...',
+                title: 'Setting up Sneap...',
                 cancellable: false
-            }, async () => {
+            }, async (progress) => {
+                progress.report({ message: 'Verifying API key' });
+                
                 try {
                     // Create temporary API service to test the key
                     const userPrefix = apiKey.split('_')[0];
@@ -199,30 +201,34 @@ export class CommandManager {
                 }
                 
                 // Keep notification visible for a moment
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 500));
             });
 
+            // Small delay between progress dismissal and next notification
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
             // After verification is complete, show result
             if (isValid) {
-                // Show success notification
-                await vscode.window.withProgress({
-                    location: vscode.ProgressLocation.Notification,
-                    title: '✓ API key verified successfully! Reloading...',
-                    cancellable: false
-                }, async () => {
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                });
+                // Show success notification (similar to "You are on the latest version!")
+                vscode.window.showInformationMessage(
+                    `You are successfully authenticated with Sneap!`
+                );
                 
-                vscode.commands.executeCommand('workbench.action.reloadWindow');
+                // Small delay before reload
+                setTimeout(() => {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }, 1000);
             } else {
-                // Show error notification
-                await vscode.window.withProgress({
-                    location: vscode.ProgressLocation.Notification,
-                    title: '✗ Invalid API key. Please check your key and try again.',
-                    cancellable: false
-                }, async () => {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                });
+                // Show error notification with options (similar to GitHub error)
+                const selection = await vscode.window.showErrorMessage(
+                    'Error signing into Sneap',
+                    'Try again',
+                    'Cancel'
+                );
+                
+                if (selection === 'Try again') {
+                    vscode.commands.executeCommand('sneap.configureApiKey');
+                }
             }
         }
     }
@@ -337,7 +343,7 @@ export class CommandManager {
             // Show success message with progress notification for 2 seconds
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `✓ Snippet with prefix "${prefix}" created successfully!`,
+                title: `Snippet with prefix "${prefix}" created successfully!`,
                 cancellable: false
             }, async () => {
                 // Keep the notification visible for 2 seconds
@@ -432,7 +438,7 @@ export class CommandManager {
                     // Show success message with progress notification for 2 seconds
                     await vscode.window.withProgress({
                         location: vscode.ProgressLocation.Notification,
-                        title: `✓ Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
+                        title: `Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
                         cancellable: false
                     }, async () => {
                         // Keep the notification visible for 2 seconds
