@@ -11,6 +11,12 @@ out/
 build/
 *.tsbuildinfo
 
+# TypeScript compiled files (except in specific directories)
+packages/back/*.js
+packages/back/*.js.map
+packages/back/*.d.ts
+packages/back/*.d.ts.map
+
 # IDE
 .vscode/*
 !.vscode/settings.json

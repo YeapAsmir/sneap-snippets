@@ -45,8 +45,31 @@ function adminPanel() {
 
         // Lifecycle
         async init() {
-            await this.loadKeys();
-            await this.loadSnippetStats();
+            console.log('Initializing admin panel...');
+            
+            // Check for token and redirect to login if not found
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // Try to load data - if 401, redirect to login
+            try {
+                await this.loadKeys();
+                await this.loadSnippetStats();
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                window.location.href = '/login';
+            }
+        },
+        
+        getAuthHeaders() {
+            const token = localStorage.getItem('adminToken');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
         },
 
         // Modal Management
@@ -78,7 +101,15 @@ function adminPanel() {
         async loadKeys() {
             this.loading = true;
             try {
-                const response = await fetch('/admin/api-keys');
+                const response = await fetch('/admin/api-keys', {
+                    headers: this.getAuthHeaders()
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
@@ -109,9 +140,14 @@ function adminPanel() {
             try {
                 const response = await fetch('/admin/api-keys', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getAuthHeaders(),
                     body: JSON.stringify(formData)
                 });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -134,9 +170,14 @@ function adminPanel() {
             try {
                 const response = await fetch(`/admin/api-keys/${keyId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getAuthHeaders(),
                     body: JSON.stringify({ isActive })
                 });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -159,8 +200,14 @@ function adminPanel() {
             this.loading = true;
             try {
                 const response = await fetch(`/admin/api-keys/${this.keyToDelete.keyId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: this.getAuthHeaders()
                 });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
 
                 const data = await response.json();
 
@@ -181,7 +228,15 @@ function adminPanel() {
         async loadSnippetStats() {
             this.loading = true;
             try {
-                const response = await fetch('/admin/stats');
+                const response = await fetch('/admin/stats', {
+                    headers: this.getAuthHeaders()
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 if (data.success) {
@@ -222,6 +277,16 @@ function adminPanel() {
         // Validation
         isValidUsername(username) {
             return /^[a-zA-Z0-9_-]+$/.test(username) && username.length >= 2;
+        },
+
+        // Logout
+        logout() {
+            // Remove tokens from localStorage
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRefreshToken');
+            
+            // Redirect to login page
+            window.location.href = '/login';
         }
     }
 }

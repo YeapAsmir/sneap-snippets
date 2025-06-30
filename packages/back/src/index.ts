@@ -4,6 +4,7 @@ import fastify             from 'fastify';
 import path                from 'path';
 import { DrizzleDatabase } from './db';
 import { SnippetTrie }     from './trie';
+import { AuthService, validateJWT } from './auth';
 import 'dotenv/config';
 
 const server = fastify({
@@ -80,40 +81,90 @@ server.register(cors, {
   credentials: true
 });
 
-// Serve static files for admin panel (without authentication for plugin)
+// Serve static files for admin panel
 server.register(require('@fastify/static'), {
   root: path.join(__dirname, '../public'),
-  prefix: '/admin-static/'
+  prefix: '/assets/',
+  decorateReply: false
 });
 
-// Admin authentication middleware
-async function adminAuth(request: any, reply: any) {
-  const authHeader = request.headers.authorization;
+// Login page route (no auth required)
+server.get('/login', async (request, reply) => {
+  const fs = require('fs');
+  const loginHtmlPath = path.join(__dirname, '../public/login.html');
   
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    reply.header('WWW-Authenticate', 'Basic realm="Admin Panel"');
-    return reply.status(401).send('Authentication required');
+  try {
+    const htmlContent = fs.readFileSync(loginHtmlPath, 'utf8');
+    reply.type('text/html').send(htmlContent);
+  } catch (error) {
+    reply.status(404).send('Login page not found');
   }
-  
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-  const [username, password] = credentials.split(':');
-  
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  
-  if (username !== 'admin' || password !== adminPassword) {
-    reply.header('WWW-Authenticate', 'Basic realm="Admin Panel"');
-    return reply.status(401).send('Invalid credentials');
-  }
-}
-
-// Admin panel route with authentication
-server.get('/admin', { preHandler: adminAuth }, async (request, reply) => {
-  return reply.redirect('/admin/index.html');
 });
 
-// Protect direct access to index.html with custom handler
-server.get('/admin/index.html', { preHandler: adminAuth }, async (request, reply) => {
+// Authentication endpoints
+server.post('/auth/login', async (request: any, reply) => {
+  const { username, password, rememberMe } = request.body;
+  
+  if (!username || !password) {
+    return reply.status(400).send({
+      success: false,
+      error: 'Username and password required'
+    });
+  }
+  
+  const isValid = await AuthService.validateCredentials(username, password);
+  
+  if (!isValid) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Invalid credentials'
+    });
+  }
+  
+  const accessToken = AuthService.generateAccessToken(username);
+  const response: any = {
+    success: true,
+    token: accessToken
+  };
+  
+  if (rememberMe) {
+    response.refreshToken = AuthService.generateRefreshToken(username);
+  }
+  
+  return response;
+});
+
+server.post('/auth/refresh', async (request: any, reply) => {
+  const { refreshToken } = request.body;
+  
+  if (!refreshToken) {
+    return reply.status(400).send({
+      success: false,
+      error: 'Refresh token required'
+    });
+  }
+  
+  const payload = AuthService.verifyRefreshToken(refreshToken);
+  
+  if (!payload) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Invalid refresh token'
+    });
+  }
+  
+  const newAccessToken = AuthService.generateAccessToken(payload.username);
+  
+  return {
+    success: true,
+    token: newAccessToken
+  };
+});
+
+// Admin panel route - check auth and serve HTML or redirect
+server.get('/admin', async (request, reply) => {
+  // For page requests, we need to check localStorage on client side
+  // The actual auth check happens when the admin panel makes API calls
   const fs = require('fs');
   const adminHtmlPath = path.join(__dirname, '../public/index.html');
   
@@ -124,8 +175,6 @@ server.get('/admin/index.html', { preHandler: adminAuth }, async (request, reply
     reply.status(404).send('Admin panel not found');
   }
 });
-
-// Note: Static files are accessible once authenticated via the main page
 
 
 server.get('/', async (request, reply) => {
@@ -317,7 +366,7 @@ server.get('/api/snippets/:id/analytics', { preHandler: validateApiKey }, async 
 // Update index.html to use /admin-static/ for assets if needed
 
 // Admin Panel API Routes
-server.get('/admin/api-keys', { preHandler: adminAuth }, async (request: any, reply) => {
+server.get('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
   await initializeServer();
   
   try {
@@ -334,7 +383,7 @@ server.get('/admin/api-keys', { preHandler: adminAuth }, async (request: any, re
   }
 });
 
-server.post('/admin/api-keys', { preHandler: adminAuth }, async (request: any, reply) => {
+server.post('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
   await initializeServer();
   
   const { userName, prefix } = request.body;
@@ -366,7 +415,7 @@ server.post('/admin/api-keys', { preHandler: adminAuth }, async (request: any, r
   }
 });
 
-server.put('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (request: any, reply) => {
+server.put('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
   await initializeServer();
   
   const { keyId } = request.params;
@@ -394,7 +443,7 @@ server.put('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (request: 
   }
 });
 
-server.delete('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (request: any, reply) => {
+server.delete('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
   await initializeServer();
   
   const { keyId } = request.params;
@@ -415,7 +464,7 @@ server.delete('/admin/api-keys/:keyId', { preHandler: adminAuth }, async (reques
 });
 
 // Admin Panel - Get comprehensive statistics
-server.get('/admin/stats', { preHandler: adminAuth }, async (request: any, reply) => {
+server.get('/admin/stats', { preHandler: validateJWT }, async (request: any, reply) => {
   await initializeServer();
   
   try {
