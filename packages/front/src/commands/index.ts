@@ -337,6 +337,9 @@ export class CommandManager {
             // Send to backend
             await this.apiService.createSnippet(snippet);
             
+            // Clear caches to ensure new snippet appears in completion
+            await this.snippetCache.clear();
+            
             // Silently refresh snippets first
             await this.handleRefreshSnippets(true);
             
@@ -432,7 +435,10 @@ export class CommandManager {
                 const success = await this.apiService.deleteSnippet(selectedSnippet.id);
                 
                 if (success) {
-                    // Silently refresh snippets first
+                    // Clear all caches to ensure deleted snippet is removed from completion
+                    await this.snippetCache.clear();
+                    
+                    // Refresh snippets to get updated list
                     await this.handleRefreshSnippets(true);
                     
                     // Show success message with progress notification for 2 seconds
