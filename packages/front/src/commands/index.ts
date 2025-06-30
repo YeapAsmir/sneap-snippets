@@ -33,14 +33,10 @@ export class CommandManager {
     }
 
     registerCommands(context: vscode.ExtensionContext): void {
-        const refreshCommand = vscode.commands.registerCommand(
-            'sneap.refreshSnippets', 
-            this.handleRefreshSnippets.bind(this)
-        );
-
-        const insertSnippetCommand = vscode.commands.registerCommand(
-            'sneap.insertSnippet', 
-            this.handleInsertSnippet.bind(this)
+        // Commands that are always available
+        const configureApiKeyCommand = vscode.commands.registerCommand(
+            'sneap.configureApiKey',
+            this.handleConfigureApiKey.bind(this)
         );
 
         const clearCacheCommand = vscode.commands.registerCommand(
@@ -48,60 +44,79 @@ export class CommandManager {
             this.handleClearCache.bind(this)
         );
 
-        const trackUsageCommand = vscode.commands.registerCommand(
-            'sneap.trackUsage', 
-            this.handleTrackUsage.bind(this)
-        );
-
-        const showUserStatsCommand = vscode.commands.registerCommand(
-            'sneap.showUserStats', 
-            this.handleShowUserStats.bind(this)
-        );
-
-        const configureApiKeyCommand = vscode.commands.registerCommand(
-            'sneap.configureApiKey',
-            this.handleConfigureApiKey.bind(this)
-        );
-
-        const resetApiKeyCommand = vscode.commands.registerCommand(
-            'sneap.resetApiKey',
-            this.handleResetApiKey.bind(this)
-        );
-
-        const createSnippetFromSelectionCommand = vscode.commands.registerCommand(
-            'sneap.createSnippetFromSelection',
-            this.handleCreateSnippetFromSelection.bind(this)
-        );
-
-        const deleteSnippetByNameCommand = vscode.commands.registerCommand(
-            'sneap.deleteSnippetByName',
-            this.handleDeleteSnippetByName.bind(this)
-        );
-
+        // Always register these commands
         context.subscriptions.push(
-            refreshCommand,
-            insertSnippetCommand,
-            clearCacheCommand,
-            trackUsageCommand,
-            showUserStatsCommand,
             configureApiKeyCommand,
-            resetApiKeyCommand,
-            createSnippetFromSelectionCommand,
-            deleteSnippetByNameCommand
+            clearCacheCommand
         );
+
+        // Commands that require authentication
+        if (this.authService.isAuthenticated()) {
+            const refreshCommand = vscode.commands.registerCommand(
+                'sneap.refreshSnippets', 
+                this.handleRefreshSnippets.bind(this)
+            );
+
+            const insertSnippetCommand = vscode.commands.registerCommand(
+                'sneap.insertSnippet', 
+                this.handleInsertSnippet.bind(this)
+            );
+
+            const trackUsageCommand = vscode.commands.registerCommand(
+                'sneap.trackUsage', 
+                this.handleTrackUsage.bind(this)
+            );
+
+            const showUserStatsCommand = vscode.commands.registerCommand(
+                'sneap.showUserStats', 
+                this.handleShowUserStats.bind(this)
+            );
+
+            const resetApiKeyCommand = vscode.commands.registerCommand(
+                'sneap.resetApiKey',
+                this.handleResetApiKey.bind(this)
+            );
+
+            const createSnippetFromSelectionCommand = vscode.commands.registerCommand(
+                'sneap.createSnippetFromSelection',
+                this.handleCreateSnippetFromSelection.bind(this)
+            );
+
+            const deleteSnippetByNameCommand = vscode.commands.registerCommand(
+                'sneap.deleteSnippetByName',
+                this.handleDeleteSnippetByName.bind(this)
+            );
+
+            context.subscriptions.push(
+                refreshCommand,
+                insertSnippetCommand,
+                trackUsageCommand,
+                showUserStatsCommand,
+                resetApiKeyCommand,
+                createSnippetFromSelectionCommand,
+                deleteSnippetByNameCommand
+            );
+        }
     }
 
-    private async handleRefreshSnippets(): Promise<void> {
-        if (!this.apiService) {
+    private async handleRefreshSnippets(silent: boolean = false): Promise<void> {
+        if (!this.authService.isAuthenticated() || !this.apiService) {
             vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
         const snippets = await this.apiService.fetchSnippets();
         this.setCachedSnippets(snippets);
-        vscode.window.showInformationMessage(`Refreshed! Loaded ${snippets.length} snippets.`);
+        
+        if (!silent) {
+            vscode.window.showInformationMessage(`Refreshed! Loaded ${snippets.length} snippets.`);
+        }
     }
 
     private handleInsertSnippet(): void {
+        if (!this.authService.isAuthenticated()) {
+            vscode.window.showErrorMessage('Please configure your API key first');
+            return;
+        }
         const stats = this.snippetCache.getStats();
         vscode.window.showInformationMessage(
             `Sneap: ${this.cachedSnippets.length} total, ${stats.memorySize} in memory cache, Storage: ${stats.storageConnected ? 'Connected' : 'Offline'}`
@@ -114,7 +129,7 @@ export class CommandManager {
     }
 
     private async handleTrackUsage(snippetId: number, language: string, startTime: number): Promise<void> {
-        if (!this.apiService) return;
+        if (!this.authService.isAuthenticated() || !this.apiService) return;
         
         const searchTime = Date.now() - startTime;
         const activeEditor = vscode.window.activeTextEditor;
@@ -157,10 +172,58 @@ export class CommandManager {
     }
 
     private async handleConfigureApiKey(): Promise<void> {
-        const success = await this.authService.promptForApiKey();
-        if (success) {
-            vscode.window.showInformationMessage('API key configured! Restarting VS Code...');
-            vscode.commands.executeCommand('workbench.action.reloadWindow');
+        const apiKey = await this.authService.promptForApiKey();
+        if (apiKey) {
+            let isValid = false;
+            
+            // Test API key validity with progress notification
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: 'Verifying API key...',
+                cancellable: false
+            }, async () => {
+                try {
+                    // Create temporary API service to test the key
+                    const userPrefix = apiKey.split('_')[0];
+                    const testApiService = new ApiService(userPrefix, apiKey);
+                    
+                    // Try to fetch snippets to validate the key
+                    await testApiService.fetchSnippets();
+                    
+                    // If successful, save the key
+                    await this.authService.setApiKey(apiKey);
+                    isValid = true;
+                } catch (error: any) {
+                    console.error('API key validation failed:', error);
+                    isValid = false;
+                }
+                
+                // Keep notification visible for a moment
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            });
+
+            // After verification is complete, show result
+            if (isValid) {
+                // Show success notification
+                await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: '✓ API key verified successfully! Reloading...',
+                    cancellable: false
+                }, async () => {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                });
+                
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            } else {
+                // Show error notification
+                await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: '✗ Invalid API key. Please check your key and try again.',
+                    cancellable: false
+                }, async () => {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                });
+            }
         }
     }
 
@@ -179,6 +242,11 @@ export class CommandManager {
     }
 
     private async handleCreateSnippetFromSelection(): Promise<void> {
+        if (!this.authService.isAuthenticated() || !this.apiService) {
+            vscode.window.showErrorMessage('Please configure your API key first');
+            return;
+        }
+
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage('No active editor found');
@@ -188,11 +256,6 @@ export class CommandManager {
         const selection = editor.selection;
         if (selection.isEmpty) {
             vscode.window.showErrorMessage('Please select code to create a snippet');
-            return;
-        }
-
-        if (!this.apiService) {
-            vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
 
@@ -266,15 +329,19 @@ export class CommandManager {
             };
 
             // Send to backend
-            const createdSnippet = await this.apiService.createSnippet(snippet);
+            await this.apiService.createSnippet(snippet);
             
-            vscode.window.showInformationMessage(
-                `Snippet with prefix "${prefix}" created successfully!`,
-                'Refresh Snippets'
-            ).then(selection => {
-                if (selection === 'Refresh Snippets') {
-                    vscode.commands.executeCommand('sneap.refreshSnippets');
-                }
+            // Silently refresh snippets first
+            await this.handleRefreshSnippets(true);
+            
+            // Show success message with progress notification for 2 seconds
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `✓ Snippet with prefix "${prefix}" created successfully!`,
+                cancellable: false
+            }, async () => {
+                // Keep the notification visible for 2 seconds
+                await new Promise(resolve => setTimeout(resolve, 2000));
             });
 
         } catch (error) {
@@ -295,7 +362,7 @@ export class CommandManager {
     }
 
     private async handleDeleteSnippetByName(): Promise<void> {
-        if (!this.apiService) {
+        if (!this.authService.isAuthenticated() || !this.apiService) {
             vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
@@ -359,13 +426,17 @@ export class CommandManager {
                 const success = await this.apiService.deleteSnippet(selectedSnippet.id);
                 
                 if (success) {
-                    vscode.window.showInformationMessage(
-                        `Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
-                        'Refresh Snippets'
-                    ).then(selection => {
-                        if (selection === 'Refresh Snippets') {
-                            vscode.commands.executeCommand('sneap.refreshSnippets');
-                        }
+                    // Silently refresh snippets first
+                    await this.handleRefreshSnippets(true);
+                    
+                    // Show success message with progress notification for 2 seconds
+                    await vscode.window.withProgress({
+                        location: vscode.ProgressLocation.Notification,
+                        title: `✓ Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
+                        cancellable: false
+                    }, async () => {
+                        // Keep the notification visible for 2 seconds
+                        await new Promise(resolve => setTimeout(resolve, 2000));
                     });
                 } else {
                     vscode.window.showErrorMessage('Failed to delete snippet');

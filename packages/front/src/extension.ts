@@ -6,6 +6,7 @@ import { SnippetCompletionProvider } from './providers/completion';
 import { ApiService }                from './services/api';
 import { AuthService }               from './services/auth';
 import { SearchService }             from './services/search';
+import { AuthStateManager }          from './services/authStateManager';
 
 function createStatusBarItem(): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -21,6 +22,10 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize authentication first
     const authService = new AuthService();
     const isAuthenticated = await authService.initialize(context);
+
+    // Initialize authentication state manager
+    const authStateManager = AuthStateManager.getInstance(authService);
+    authStateManager.initialize(context);
 
     // Initialize basic services
     const snippetCache = new SnippetCache();

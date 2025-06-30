@@ -7,7 +7,7 @@
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/packages/front",
-        "--disable-extensions",
+        // "--disable-extensions",
       ],
       "outFiles": [
         "${workspaceFolder}/packages/front/out/**/*.js"

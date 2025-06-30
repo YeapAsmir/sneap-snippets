@@ -21,11 +21,13 @@
     "commands": [
       {
         "command": "sneap.refreshSnippets",
-        "title": "Sneap: Refresh from Server"
+        "title": "Sneap: Refresh from Server",
+        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.insertSnippet",
-        "title": "Sneap: Show Info"
+        "title": "Sneap: Show Info",
+        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.clearCache",
@@ -33,7 +35,8 @@
       },
       {
         "command": "sneap.showUserStats",
-        "title": "Sneap: Show My Stats"
+        "title": "Sneap: Show My Stats",
+        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.configureApiKey",
@@ -41,17 +44,54 @@
       },
       {
         "command": "sneap.resetApiKey",
-        "title": "Sneap: Reset API Key"
+        "title": "Sneap: Reset API Key",
+        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.createSnippetFromSelection",
-        "title": "Sneap: Create snippet from selection"
+        "title": "Sneap: Create snippet from selection",
+        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.deleteSnippetByName",
-        "title": "Sneap: Delete snippet by prefix"
+        "title": "Sneap: Delete snippet by prefix",
+        "enablement": "sneap.authenticated"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "sneap.refreshSnippets",
+          "when": "sneap.authenticated"
+        },
+        {
+          "command": "sneap.insertSnippet",
+          "when": "sneap.authenticated"
+        },
+        {
+          "command": "sneap.clearCache"
+        },
+        {
+          "command": "sneap.showUserStats",
+          "when": "sneap.authenticated"
+        },
+        {
+          "command": "sneap.configureApiKey"
+        },
+        {
+          "command": "sneap.resetApiKey",
+          "when": "sneap.authenticated"
+        },
+        {
+          "command": "sneap.createSnippetFromSelection",
+          "when": "sneap.authenticated"
+        },
+        {
+          "command": "sneap.deleteSnippetByName",
+          "when": "sneap.authenticated"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

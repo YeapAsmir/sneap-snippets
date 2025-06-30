@@ -13,7 +13,7 @@ export class AuthService {
         return this.apiKey.length > 0;
     }
 
-    async promptForApiKey(): Promise<boolean> {
+    async promptForApiKey(): Promise<string | undefined> {
         const apiKey = await vscode.window.showInputBox({
             prompt: 'Enter your Sneap API key',
             placeHolder: 'ex: sneap_123456789',
@@ -37,12 +37,7 @@ export class AuthService {
             }
         });
 
-        if (apiKey && apiKey.trim()) {
-            await this.setApiKey(apiKey.trim());
-            return true;
-        }
-
-        return false;
+        return apiKey?.trim();
     }
 
     async setApiKey(apiKey: string): Promise<void> {
