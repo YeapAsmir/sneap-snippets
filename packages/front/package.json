@@ -25,18 +25,13 @@
         "enablement": "sneap.authenticated"
       },
       {
-        "command": "sneap.insertSnippet",
+        "command": "sneap.showInfo",
         "title": "Sneap: Show Info",
         "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.clearCache",
         "title": "Sneap: Clear Cache"
-      },
-      {
-        "command": "sneap.showUserStats",
-        "title": "Sneap: Show My Stats",
-        "enablement": "sneap.authenticated"
       },
       {
         "command": "sneap.configureApiKey",
@@ -53,7 +48,7 @@
         "enablement": "sneap.authenticated"
       },
       {
-        "command": "sneap.deleteSnippetByName",
+        "command": "sneap.deleteSnippetByPrefix",
         "title": "Sneap: Delete snippet by prefix",
         "enablement": "sneap.authenticated"
       }
@@ -65,15 +60,11 @@
           "when": "sneap.authenticated"
         },
         {
-          "command": "sneap.insertSnippet",
+          "command": "sneap.showInfo",
           "when": "sneap.authenticated"
         },
         {
           "command": "sneap.clearCache"
-        },
-        {
-          "command": "sneap.showUserStats",
-          "when": "sneap.authenticated"
         },
         {
           "command": "sneap.configureApiKey"
@@ -87,7 +78,7 @@
           "when": "sneap.authenticated"
         },
         {
-          "command": "sneap.deleteSnippetByName",
+          "command": "sneap.deleteSnippetByPrefix",
           "when": "sneap.authenticated"
         }
       ]

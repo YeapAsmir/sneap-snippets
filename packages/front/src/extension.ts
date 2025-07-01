@@ -1,12 +1,15 @@
 // Misc
 import * as vscode                   from 'vscode';
-import { SnippetCache }              from './cache';
 import { CommandManager }            from './commands';
 import { SnippetCompletionProvider } from './providers/completion';
 import { ApiService }                from './services/api';
 import { AuthService }               from './services/auth';
 import { SearchService }             from './services/search';
 import { AuthStateManager }          from './services/authStateManager';
+
+// Global variables to manage completion provider re-registration
+let completionProvider: SnippetCompletionProvider | null = null;
+let completionProviderDisposable: vscode.Disposable | null = null;
 
 function createStatusBarItem(): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -15,6 +18,30 @@ function createStatusBarItem(): vscode.StatusBarItem {
     statusBarItem.tooltip = 'Click to refresh snippets from server';
     statusBarItem.show();
     return statusBarItem;
+}
+
+export function reregisterCompletionProvider(searchService: SearchService, context: vscode.ExtensionContext): void {
+    // Dispose existing provider
+    if (completionProviderDisposable) {
+        completionProviderDisposable.dispose();
+        // Remove from subscriptions
+        const index = context.subscriptions.indexOf(completionProviderDisposable);
+        if (index > -1) {
+            context.subscriptions.splice(index, 1);
+        }
+    }
+    
+    // Create new provider instance
+    completionProvider = new SnippetCompletionProvider(searchService);
+    
+    // Register new provider
+    completionProviderDisposable = vscode.languages.registerCompletionItemProvider(
+        ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'],
+        completionProvider
+    );
+    
+    // Add to context subscriptions
+    context.subscriptions.push(completionProviderDisposable);
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -27,9 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const authStateManager = AuthStateManager.getInstance(authService);
     authStateManager.initialize(context);
 
-    // Initialize basic services
-    const snippetCache = new SnippetCache();
-    await snippetCache.initialize(context);
+    // Initialize services
 
     // Always create CommandManager and register commands first
     let commandManager: CommandManager;
@@ -38,10 +63,10 @@ export async function activate(context: vscode.ExtensionContext) {
     
     if (isAuthenticated) {
         apiService = new ApiService(authService.getUserPrefix(), authService.getApiKey());
-        searchService = new SearchService(snippetCache, apiService);
+        searchService = new SearchService(apiService);
     }
     
-    commandManager = new CommandManager(snippetCache, apiService, searchService, authService);
+    commandManager = new CommandManager(apiService, searchService, authService);
     commandManager.registerCommands(context);
 
     if (!isAuthenticated) {
@@ -57,25 +82,20 @@ export async function activate(context: vscode.ExtensionContext) {
         return;
     }
 
-    const completionProvider = new SnippetCompletionProvider(searchService!);
-
     // Load initial snippets with error handling
     try {
         const cachedSnippets = await apiService!.fetchSnippets();
         commandManager.setCachedSnippets(cachedSnippets);
         
-        // Register completion provider
-        const provider = vscode.languages.registerCompletionItemProvider(
-            ['javascript', 'typescript', 'javascriptreact', 'typescriptreact'],
-            completionProvider
-        );
+        // Register completion provider using the reusable function
+        reregisterCompletionProvider(searchService!, context);
         
         const statusBarItem = createStatusBarItem();
         statusBarItem.text = `$(check) Sneap (${authService.getUserPrefix()})`;
         statusBarItem.tooltip = `Connected as ${authService.getUserPrefix()} - Click to refresh`;
 
         vscode.window.setStatusBarMessage(`Sneap: ${cachedSnippets.length} snippets loaded!`, 3000);
-        context.subscriptions.push(provider, statusBarItem);
+        context.subscriptions.push(statusBarItem);
         
     } catch (error: any) {
         console.error('Error loading snippets:', error);

@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+// Misc
+import * as vscode     from 'vscode';
 import { AuthService } from './auth';
 
 export class AuthStateManager {
@@ -45,11 +46,10 @@ export class AuthStateManager {
         // Commands that require authentication
         const authRequiredCommands = [
             'sneap.refreshSnippets',
-            'sneap.insertSnippet',
+            'sneap.showInfo',
             'sneap.trackUsage',
-            'sneap.showUserStats',
             'sneap.createSnippetFromSelection',
-            'sneap.deleteSnippetByName'
+            'sneap.deleteSnippetByPrefix'
         ];
 
         // Update status bar visibility

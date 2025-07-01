@@ -1,6 +1,5 @@
 // Misc
 import * as vscode       from 'vscode';
-import { SnippetCache }  from '../cache';
 import { ApiService }    from '../services/api';
 import { AuthService }   from '../services/auth';
 import { SearchService } from '../services/search';
@@ -8,18 +7,16 @@ import { Snippet }       from '../types/snippet';
 
 export class CommandManager {
     private cachedSnippets: Snippet[] = [];
-    private snippetCache: SnippetCache;
     private apiService: ApiService | null;
     private searchService: SearchService | null;
     private authService: AuthService;
+    private context: vscode.ExtensionContext | null = null;
 
     constructor(
-        snippetCache: SnippetCache, 
         apiService: ApiService | null, 
         searchService: SearchService | null,
         authService: AuthService
     ) {
-        this.snippetCache = snippetCache;
         this.apiService = apiService;
         this.searchService = searchService;
         this.authService = authService;
@@ -32,44 +29,43 @@ export class CommandManager {
         }
     }
 
+    private async forceCompletionRefresh(): Promise<void> {
+        if (this.context && this.searchService) {
+            const { reregisterCompletionProvider } = await import('../extension');
+            reregisterCompletionProvider(this.searchService, this.context);
+        }
+    }
+
     registerCommands(context: vscode.ExtensionContext): void {
+        this.context = context;
         // Commands that are always available
         const configureApiKeyCommand = vscode.commands.registerCommand(
             'sneap.configureApiKey',
             this.handleConfigureApiKey.bind(this)
         );
 
-        const clearCacheCommand = vscode.commands.registerCommand(
-            'sneap.clearCache', 
-            this.handleClearCache.bind(this)
+        const refreshSnippetsCommand = vscode.commands.registerCommand(
+            'sneap.refreshSnippets', 
+            this.handleRefreshSnippets.bind(this)
         );
 
         // Always register these commands
         context.subscriptions.push(
             configureApiKeyCommand,
-            clearCacheCommand
+            refreshSnippetsCommand
         );
 
         // Commands that require authentication
         if (this.authService.isAuthenticated()) {
-            const refreshCommand = vscode.commands.registerCommand(
-                'sneap.refreshSnippets', 
-                this.handleRefreshSnippets.bind(this)
-            );
 
             const insertSnippetCommand = vscode.commands.registerCommand(
-                'sneap.insertSnippet', 
+                'sneap.showInfo', 
                 this.handleInsertSnippet.bind(this)
             );
 
             const trackUsageCommand = vscode.commands.registerCommand(
                 'sneap.trackUsage', 
                 this.handleTrackUsage.bind(this)
-            );
-
-            const showUserStatsCommand = vscode.commands.registerCommand(
-                'sneap.showUserStats', 
-                this.handleShowUserStats.bind(this)
             );
 
             const resetApiKeyCommand = vscode.commands.registerCommand(
@@ -82,19 +78,17 @@ export class CommandManager {
                 this.handleCreateSnippetFromSelection.bind(this)
             );
 
-            const deleteSnippetByNameCommand = vscode.commands.registerCommand(
-                'sneap.deleteSnippetByName',
-                this.handleDeleteSnippetByName.bind(this)
+            const deleteSnippetByPrefixCommand = vscode.commands.registerCommand(
+                'sneap.deleteSnippetByPrefix',
+                this.handledeleteSnippetByPrefix.bind(this)
             );
 
             context.subscriptions.push(
-                refreshCommand,
                 insertSnippetCommand,
                 trackUsageCommand,
-                showUserStatsCommand,
                 resetApiKeyCommand,
                 createSnippetFromSelectionCommand,
-                deleteSnippetByNameCommand
+                deleteSnippetByPrefixCommand
             );
         }
     }
@@ -117,16 +111,11 @@ export class CommandManager {
             vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
-        const stats = this.snippetCache.getStats();
         vscode.window.showInformationMessage(
-            `Sneap: ${this.cachedSnippets.length} total, ${stats.memorySize} in memory cache, Storage: ${stats.storageConnected ? 'Connected' : 'Offline'}`
+            `Sneap: ${this.cachedSnippets.length} snippets available`
         );
     }
 
-    private async handleClearCache(): Promise<void> {
-        await this.snippetCache.clear();
-        vscode.window.showInformationMessage('Snippet cache cleared!');
-    }
 
     private async handleTrackUsage(snippetId: number, language: string, startTime: number): Promise<void> {
         if (!this.authService.isAuthenticated() || !this.apiService) return;
@@ -143,32 +132,6 @@ export class CommandManager {
             wasAccepted: true
         });
         
-    }
-
-    private async handleShowUserStats(): Promise<void> {
-        if (!this.authService.isAuthenticated() || !this.apiService) {
-            vscode.window.showErrorMessage('Please configure your API key first');
-            return;
-        }
-
-        try {
-            const stats = await this.apiService.getUserStats();
-            
-            if (stats) {
-                const favLangs = stats.favoriteLanguages?.map(l => `${l.language} (${l.count})`).join(', ') || 'None yet';
-                const userPrefix = this.authService.getUserPrefix();
-                const message = `Statistics for ${userPrefix}:
-• Total usage: ${stats.totalUsage || 0}
-• Favorite languages: ${favLangs}
-• Average search time: ${stats.performance?.avgSearchTime?.toFixed(1) || 'N/A'}ms`;
-                
-                vscode.window.showInformationMessage(message);
-            } else {
-                vscode.window.showErrorMessage('Unable to load statistics');
-            }
-        } catch (error) {
-            vscode.window.showErrorMessage('Unable to load statistics');
-        }
     }
 
     private async handleConfigureApiKey(): Promise<void> {
@@ -337,16 +300,16 @@ export class CommandManager {
             // Send to backend
             await this.apiService.createSnippet(snippet);
             
-            // Clear caches to ensure new snippet appears in completion
-            await this.snippetCache.clear();
-            
-            // Silently refresh snippets first
+            // Refresh snippets to get updated list from server
             await this.handleRefreshSnippets(true);
+            
+            // Force VS Code to refresh completion provider to prevent cache issues
+            await this.forceCompletionRefresh();
             
             // Show success message with progress notification for 2 seconds
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Snippet with prefix "${prefix}" created successfully!`,
+                title: `Snippet with prefix ${prefix} created successfully!`,
                 cancellable: false
             }, async () => {
                 // Keep the notification visible for 2 seconds
@@ -370,7 +333,7 @@ export class CommandManager {
         return scopeMapping[languageId] || [languageId];
     }
 
-    private async handleDeleteSnippetByName(): Promise<void> {
+    private async handledeleteSnippetByPrefix(): Promise<void> {
         if (!this.authService.isAuthenticated() || !this.apiService) {
             vscode.window.showErrorMessage('Please configure your API key first');
             return;
@@ -435,16 +398,16 @@ export class CommandManager {
                 const success = await this.apiService.deleteSnippet(selectedSnippet.id);
                 
                 if (success) {
-                    // Clear all caches to ensure deleted snippet is removed from completion
-                    await this.snippetCache.clear();
-                    
-                    // Refresh snippets to get updated list
+                    // Refresh snippets to get updated list from server
                     await this.handleRefreshSnippets(true);
+                    
+                    // Force VS Code to refresh completion provider to prevent cache issues
+                    await this.forceCompletionRefresh();
                     
                     // Show success message with progress notification for 2 seconds
                     await vscode.window.withProgress({
                         location: vscode.ProgressLocation.Notification,
-                        title: `Snippet "${selectedSnippet.name || selectedSnippet.prefix}" deleted successfully!`,
+                        title: `Snippet ${selectedSnippet.name || selectedSnippet.prefix} deleted successfully!`,
                         cancellable: false
                     }, async () => {
                         // Keep the notification visible for 2 seconds
