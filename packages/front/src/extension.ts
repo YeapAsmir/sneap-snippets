@@ -4,18 +4,26 @@ import { CommandManager }            from './commands';
 import { SnippetCompletionProvider } from './providers/completion';
 import { ApiService }                from './services/api';
 import { AuthService }               from './services/auth';
-import { SearchService }             from './services/search';
 import { AuthStateManager }          from './services/authStateManager';
+import { SearchService }             from './services/search';
 
 // Global variables to manage completion provider re-registration
 let completionProvider: SnippetCompletionProvider | null = null;
 let completionProviderDisposable: vscode.Disposable | null = null;
 
-function createStatusBarItem(): vscode.StatusBarItem {
+function createStatusBarItem(isAuthenticated: boolean, userPrefix?: string): vscode.StatusBarItem {
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.command = 'sneap.refreshSnippets';
-    statusBarItem.text = '$(sync) Sneap';
-    statusBarItem.tooltip = 'Click to refresh snippets from server';
+    
+    if (!isAuthenticated) {
+        statusBarItem.text = '$(warning) Sneap';
+        statusBarItem.tooltip = 'Sneap wait for auth';
+        statusBarItem.command = 'sneap.configureApiKey';
+    } else {
+        statusBarItem.text = `$(check) Sneap (${userPrefix || 'user'})`;
+        statusBarItem.tooltip = `Connected as ${userPrefix || 'user'} - Click to refresh`;
+        statusBarItem.command = 'sneap.refreshSnippets';
+    }
+    
     statusBarItem.show();
     return statusBarItem;
 }
@@ -70,6 +78,9 @@ export async function activate(context: vscode.ExtensionContext) {
     commandManager.registerCommands(context);
 
     if (!isAuthenticated) {
+        const statusBarItem = createStatusBarItem(false);
+        context.subscriptions.push(statusBarItem);
+        
         vscode.window.showWarningMessage(
             'Sneap: API key required',
             'Configure now'
@@ -90,9 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Register completion provider using the reusable function
         reregisterCompletionProvider(searchService!, context);
         
-        const statusBarItem = createStatusBarItem();
-        statusBarItem.text = `$(check) Sneap (${authService.getUserPrefix()})`;
-        statusBarItem.tooltip = `Connected as ${authService.getUserPrefix()} - Click to refresh`;
+        const statusBarItem = createStatusBarItem(true, authService.getUserPrefix());
 
         vscode.window.setStatusBarMessage(`Sneap: ${cachedSnippets.length} snippets loaded!`, 3000);
         context.subscriptions.push(statusBarItem);
@@ -111,6 +120,11 @@ export async function activate(context: vscode.ExtensionContext) {
             });
             return;
         } else {
+            const statusBarItem = createStatusBarItem(true, authService.getUserPrefix());
+            statusBarItem.text = '$(warning) Sneap (connection error)';
+            statusBarItem.tooltip = 'Unable to load snippets - Click to retry';
+            context.subscriptions.push(statusBarItem);
+            
             vscode.window.showWarningMessage('Unable to load snippets. Check your connection.');
         }
     }

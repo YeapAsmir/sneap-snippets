@@ -11,6 +11,8 @@ export class CommandManager {
     private searchService: SearchService | null;
     private authService: AuthService;
     private context: vscode.ExtensionContext | null = null;
+    private refreshTimeout: NodeJS.Timeout | null = null;
+    private isRefreshing: boolean = false;
 
     constructor(
         apiService: ApiService | null, 
@@ -98,12 +100,90 @@ export class CommandManager {
             vscode.window.showErrorMessage('Please configure your API key first');
             return;
         }
-        const snippets = await this.apiService.fetchSnippets();
-        this.setCachedSnippets(snippets);
-        
-        if (!silent) {
-            vscode.window.showInformationMessage(`Refreshed! Loaded ${snippets.length} snippets.`);
+
+        // Debounce: Clear existing timeout and prevent multiple concurrent requests
+        if (this.refreshTimeout) {
+            clearTimeout(this.refreshTimeout);
         }
+        
+        if (this.isRefreshing) {
+            if (!silent) {
+                vscode.window.showInformationMessage('Refresh already in progress...');
+            }
+            return;
+        }
+
+        return new Promise((resolve) => {
+            this.refreshTimeout = setTimeout(async () => {
+                this.isRefreshing = true;
+                
+                let snippets: Snippet[] = [];
+                let success = false;
+                
+                if (!silent) {
+                    // Show progress notification during the entire fetch operation
+                    await vscode.window.withProgress({
+                        location: vscode.ProgressLocation.Notification,
+                        title: 'Refreshing snippets...',
+                        cancellable: false
+                    }, async () => {
+                        try {
+                            snippets = await this.retryFetchSnippets();
+                            this.setCachedSnippets(snippets);
+                            success = true;
+                        } catch (error: any) {
+                            console.error('Error refreshing snippets:', error);
+                            success = false;
+                        }
+                    });
+                    
+                    // Small delay to ensure progress bar is fully closed
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    // Show result notification after progress bar is closed
+                    if (success) {
+                        vscode.window.showInformationMessage(`Refreshed! Loaded ${snippets.length} snippets.`);
+                    } else {
+                        vscode.window.showErrorMessage('Failed to refresh snippets. Check your connection.');
+                    }
+                } else {
+                    try {
+                        snippets = await this.retryFetchSnippets();
+                        this.setCachedSnippets(snippets);
+                    } catch (error: any) {
+                        console.error('Error refreshing snippets:', error);
+                    }
+                }
+                
+                this.isRefreshing = false;
+                resolve();
+            }, 500);
+        });
+    }
+
+    private async retryFetchSnippets(maxRetries: number = 3): Promise<Snippet[]> {
+        if (!this.apiService) {
+            throw new Error('API service not available');
+        }
+
+        let lastError: Error | null = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await this.apiService.fetchSnippets();
+            } catch (error: any) {
+                lastError = error;
+                console.error(`Fetch attempt ${attempt} failed:`, error);
+                
+                if (attempt < maxRetries) {
+                    // Exponential backoff: wait 1s, 2s, 4s
+                    const delay = Math.pow(2, attempt - 1) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        throw lastError || new Error('Failed to fetch snippets after retries');
     }
 
     private handleInsertSnippet(): void {
