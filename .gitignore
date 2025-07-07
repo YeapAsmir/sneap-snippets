@@ -10,6 +10,7 @@ dist/
 out/
 build/
 *.tsbuildinfo
+.next/
 
 # TypeScript compiled files (except in specific directories)
 packages/back/*.js

@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "npm run dev --workspace=catalyst-demo & npm run dev --workspace=@sneap-front-snippets/fastify-app",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "install:all": "npm install",
     "typecheck": "tsc --build",

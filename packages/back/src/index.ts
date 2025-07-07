@@ -3,11 +3,11 @@ import cors                from '@fastify/cors';
 import fastify             from 'fastify';
 import path                from 'path';
 import {
-    AuthService,
-    validateJWT
+    AuthService
 }                          from './auth';
 import { DrizzleDatabase } from './db';
 import { SnippetTrie }     from './trie';
+import { adminRoutes }     from './routes/admin';
 import 'dotenv/config';
 
 const server = fastify({
@@ -82,39 +82,6 @@ server.register(cors, {
   credentials: true
 });
 
-// Serve static files for admin panel
-server.register(require('@fastify/static'), {
-  root: path.join(__dirname, '../public'),
-  prefix: '/assets/',
-  decorateReply: false
-});
-
-// Login page route (no auth required)
-server.get('/login', async (request, reply) => {
-  const fs = require('fs');
-  const loginHtmlPath = path.join(__dirname, '../public/login.html');
-  
-  try {
-    const htmlContent = fs.readFileSync(loginHtmlPath, 'utf8');
-    reply.type('text/html').send(htmlContent);
-  } catch (error) {
-    reply.status(404).send('Login page not found');
-  }
-});
-
-// Info/Documentation page route (no auth required)
-server.get('/info', async (request, reply) => {
-  const fs = require('fs');
-  const infoHtmlPath = path.join(__dirname, '../public/info.html');
-  
-  try {
-    const htmlContent = fs.readFileSync(infoHtmlPath, 'utf8');
-    reply.type('text/html').send(htmlContent);
-  } catch (error) {
-    reply.status(404).send('Documentation page not found');
-  }
-});
-
 // Authentication endpoints
 server.post('/auth/login', async (request: any, reply) => {
   const { username, password, rememberMe } = request.body;
@@ -174,22 +141,6 @@ server.post('/auth/refresh', async (request: any, reply) => {
     token: newAccessToken
   };
 });
-
-// Admin panel route - check auth and serve HTML or redirect
-server.get('/admin', async (request, reply) => {
-  // For page requests, we need to check localStorage on client side
-  // The actual auth check happens when the admin panel makes API calls
-  const fs = require('fs');
-  const adminHtmlPath = path.join(__dirname, '../public/index.html');
-  
-  try {
-    const htmlContent = fs.readFileSync(adminHtmlPath, 'utf8');
-    reply.type('text/html').send(htmlContent);
-  } catch (error) {
-    reply.status(404).send('Admin panel not found');
-  }
-});
-
 
 server.get('/', async (request, reply) => {
   return { 
@@ -388,133 +339,13 @@ server.get('/api/snippets/:id/analytics', { preHandler: validateApiKey }, async 
   };
 });
 
-// Update index.html to use /admin-static/ for assets if needed
-
-// Admin Panel API Routes
-server.get('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
-  await initializeServer();
+// Register admin routes
+server.register(async function (server) {
+  server.addHook('preHandler', async (request, reply) => {
+    await initializeServer();
+  });
   
-  try {
-    const keys = await db.getAllApiKeys();
-    return {
-      success: true,
-      data: keys
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-server.post('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
-  await initializeServer();
-  
-  const { userName, prefix } = request.body;
-  
-  if (!userName || !prefix) {
-    return {
-      success: false,
-      error: 'userName and prefix are required'
-    };
-  }
-  
-  try {
-    const keyId = db.generateApiKey(prefix);
-    const newKey = await db.createApiKey({
-      keyId,
-      userName,
-      prefix
-    });
-    
-    return {
-      success: true,
-      data: newKey
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-server.put('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
-  await initializeServer();
-  
-  const { keyId } = request.params;
-  const updates = request.body;
-  
-  try {
-    const updated = await db.updateApiKey(keyId, updates);
-    
-    if (updated) {
-      return {
-        success: true,
-        data: updated
-      };
-    }
-    
-    return {
-      success: false,
-      error: 'API key not found'
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-server.delete('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
-  await initializeServer();
-  
-  const { keyId } = request.params;
-  
-  try {
-    const deleted = await db.deleteApiKey(keyId);
-    
-    return {
-      success: deleted,
-      message: deleted ? 'API key deleted' : 'API key not found'
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-// Admin Panel - Get comprehensive statistics
-server.get('/admin/stats', { preHandler: validateJWT }, async (request: any, reply) => {
-  await initializeServer();
-  
-  try {
-    const [snippetStats, usageStats, categoryStats, popularSnippets] = await Promise.all([
-      db.getSnippetStats(),
-      db.getUsageOverview(), 
-      db.getCategoryStats(),
-      db.getPopularSnippets(5)
-    ]);
-
-    return {
-      success: true,
-      data: {
-        snippets: snippetStats,
-        usage: usageStats,
-        categories: categoryStats,
-        popular: db.transformSnippetsForClient(popularSnippets)
-      }
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch statistics'
-    };
-  }
+  await adminRoutes(server, db);
 });
 
 // Get unique categories from existing snippets
@@ -650,8 +481,8 @@ process.on('SIGTERM', async () => {
 
 const start = async () => {
   try {
-    await server.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('🚀 Sneap Server running on http://localhost:3000');
+    await server.listen({ port: 3001, host: '0.0.0.0' });
+    console.log('🚀 Sneap Server running on http://localhost:3001');
     console.log('💾 Database: Drizzle ORM + SQLite');
     console.log('🔍 Search: Trie + Full-text');
     console.log('📊 Analytics: Enabled');
