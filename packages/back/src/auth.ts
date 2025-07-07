@@ -15,6 +15,15 @@ export interface TokenPayload {
 
 export class AuthService {
   static generateAccessToken(username: string): string {
+    // Admin users get non-expiring tokens
+    if (username === ADMIN_USERNAME) {
+      return jwt.sign(
+        { username, type: 'access' } as TokenPayload,
+        JWT_SECRET
+        // No expiresIn for admin tokens
+      );
+    }
+    
     return jwt.sign(
       { username, type: 'access' } as TokenPayload,
       JWT_SECRET,

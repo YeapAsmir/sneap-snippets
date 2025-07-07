@@ -78,6 +78,10 @@ export default function Home() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  
+  // Copy state
+  const [copyCount, setCopyCount] = useState(0)
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
 
   // Load initial data (API keys and base stats) only once
   useEffect(() => {
@@ -123,6 +127,19 @@ export default function Home() {
       loadStatsForPeriod()
     }
   }, [period])
+
+  // Handle copy timeout
+  useEffect(() => {
+    if (copyCount > 0) {
+      let timeout = setTimeout(() => {
+        setCopyCount(0)
+        setCopiedKeyId(null)
+      }, 1000)
+      return () => {
+        clearTimeout(timeout)
+      }
+    }
+  }, [copyCount])
 
   // Handle API key creation
   const handleCreateApiKey = async () => {
@@ -194,6 +211,17 @@ export default function Home() {
     setKeyToDelete(null)
   }
 
+  // Copy keyId to clipboard
+  const copyToClipboard = async (keyId: string) => {
+    try {
+      await navigator.clipboard.writeText(keyId)
+      setCopiedKeyId(keyId)
+      setCopyCount(copyCount + 1)
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+    }
+  }
+
   // Handle API key toggle (activate/deactivate)
   const handleToggleApiKey = async (keyId: string, isActive: boolean) => {
     try {
@@ -234,7 +262,7 @@ export default function Home() {
 
   return (
     <>
-      <Heading>Good afternoon, Admin</Heading>
+      <Heading>Hello, Admin</Heading>
       <div className="mt-8 flex items-end justify-between">
         <Subheading>Overview</Subheading>
         <div>
@@ -291,7 +319,7 @@ export default function Home() {
         <TableHead>
           <TableRow>
             <TableHeader>Name</TableHeader>
-            <TableHeader>Key ID</TableHeader>
+            <TableHeader>Key</TableHeader>
             <TableHeader>Status</TableHeader>
             <TableHeader>Usage</TableHeader>
             <TableHeader>Created</TableHeader>
@@ -304,9 +332,7 @@ export default function Home() {
           {apiKeys.map((apiKey) => (
             <TableRow key={apiKey.keyId} title={`API Key ${apiKey.keyId}`}>
               <TableCell className="font-medium">{apiKey.userName}</TableCell>
-              <TableCell className="font-mono text-sm">
-                {apiKey.keyId}
-              </TableCell>
+              <TableCell className="font-mono text-sm">{apiKey.keyId}</TableCell>
               <TableCell>
                 <Badge color={apiKey.isActive ? 'lime' : 'red'}>
                   {apiKey.isActive ? 'Active' : 'Inactive'}
@@ -422,3 +448,4 @@ export default function Home() {
     </>
   )
 }
+
