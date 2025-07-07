@@ -1,9 +1,9 @@
 // Misc
-import { AuthGuard } from '@/components/auth-guard';
+import { AuthGuard }         from '@/components/auth-guard';
 import { ConditionalLayout } from '@/components/conditional-layout';
-import '@/styles/tailwind.css';
 import type { Metadata }     from 'next';
 import type React            from 'react';
+import '@/styles/tailwind.css';
 
 export const metadata: Metadata = {
   title: {
@@ -18,7 +18,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang="en"
-      className="text-zinc-950 antialiased lg:bg-zinc-100"
+      className="text-zinc-950 antialiased light lg:bg-zinc-100"
+      style={{ colorScheme: 'light' }}
     >
       <head>
         <link rel="preconnect" href="https://rsms.me/" />
