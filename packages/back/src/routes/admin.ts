@@ -329,9 +329,25 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
         ? ((currentKeys.length - previousKeys.length) / previousKeys.length) * 100 
         : currentKeys.length > 0 ? 100 : 0;
 
-      // Calculate usage change (simplified - you might want to implement proper usage tracking by period)
-      const usageChange = Math.random() * 20 - 10; // Placeholder - implement proper calculation
-      const snippetChange = Math.random() * 15 - 5; // Placeholder - implement proper calculation
+      // Calculate usage change based on actual periods
+      const currentPeriodUsage = allKeys
+        .filter(key => key.createdAt && new Date(Number(key.createdAt) * 1000) >= currentPeriodStart)
+        .reduce((sum, k) => sum + (k.usageCount || 0), 0);
+      
+      const previousPeriodUsage = allKeys
+        .filter(key => 
+          key.createdAt && 
+          new Date(Number(key.createdAt) * 1000) >= previousPeriodStart && 
+          new Date(Number(key.createdAt) * 1000) < previousPeriodEnd
+        )
+        .reduce((sum, k) => sum + (k.usageCount || 0), 0);
+
+      const usageChange = previousPeriodUsage > 0 
+        ? ((currentPeriodUsage - previousPeriodUsage) / previousPeriodUsage) * 100 
+        : currentPeriodUsage > 0 ? 100 : 0;
+
+      // For snippets, we'll use a stable calculation based on total count
+      const snippetChange = snippetStats.total > 0 ? 0 : 0; // No change for now since we don't track snippet creation dates
 
       return {
         success: true,

@@ -16,6 +16,7 @@ import {
     DialogActions,
     DialogDescription
 }                                 from '@/components/dialog';
+import { Divider }                from '@/components/divider';
 import {
     Dropdown,
     DropdownItem,
@@ -73,10 +74,11 @@ export default function Home() {
   // Modal state for creating API key
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
-  const [userName, setUserName] = useState('')
   const [selectedTeamMember, setSelectedTeamMember] = useState<number | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [createError, setCreateError] = useState<string | null>(null)
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
+  const [apiKeyCopied, setApiKeyCopied] = useState(false)
   
   // Alert state for API key deletion
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
@@ -85,7 +87,6 @@ export default function Home() {
   
   // Copy state
   const [copyCount, setCopyCount] = useState(0)
-  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
 
   // Load initial data (API keys and base stats) only once
   useEffect(() => {
@@ -139,7 +140,6 @@ export default function Home() {
     if (copyCount > 0) {
       let timeout = setTimeout(() => {
         setCopyCount(0)
-        setCopiedKeyId(null)
       }, 1000)
       return () => {
         clearTimeout(timeout)
@@ -166,15 +166,14 @@ export default function Home() {
       }
       
       // Use team member name as username
-      await createApiKey(teamMember.name, selectedTeamMember)
+      const newApiKey = await createApiKey(teamMember.name, selectedTeamMember)
+      
+      // Store the created API key to display
+      setCreatedApiKey(newApiKey.keyId)
       
       // Refresh API keys list
       const keysData = await getApiKeys()
       setApiKeys(keysData)
-      
-      // Reset form
-      setSelectedTeamMember(null)
-      setIsCreateModalOpen(false)
       
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create API key')
@@ -183,11 +182,26 @@ export default function Home() {
     }
   }
 
+  // Copy API key to clipboard
+  const copyApiKeyToClipboard = async () => {
+    if (!createdApiKey) return
+    
+    try {
+      await navigator.clipboard.writeText(createdApiKey)
+      setApiKeyCopied(true)
+      setTimeout(() => setApiKeyCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy API key:', err)
+    }
+  }
+
   // Reset modal state when closing
   const handleCloseModal = () => {
     setIsCreateModalOpen(false)
     setSelectedTeamMember(null)
     setCreateError(null)
+    setCreatedApiKey(null)
+    setApiKeyCopied(false)
   }
 
   // Handle API key deletion - show alert
@@ -225,16 +239,6 @@ export default function Home() {
     setKeyToDelete(null)
   }
 
-  // Copy keyId to clipboard
-  const copyToClipboard = async (keyId: string) => {
-    try {
-      await navigator.clipboard.writeText(keyId)
-      setCopiedKeyId(keyId)
-      setCopyCount(copyCount + 1)
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err)
-    }
-  }
 
   // Handle API key toggle (activate/deactivate)
   const handleToggleApiKey = async (keyId: string, isActive: boolean) => {
@@ -253,7 +257,14 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+        <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
       </div>
     )
   }
@@ -359,7 +370,9 @@ export default function Home() {
                   })}
                 </TableCell>
                 <TableCell className="font-medium">{apiKey.userName}</TableCell>
-                <TableCell className="font-mono text-sm">{apiKey.keyId}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {apiKey.keyId.slice(0, 8)}...{apiKey.keyId.slice(-4)}
+                </TableCell>
                 <TableCell>
                   <Badge color={apiKey.isActive ? 'lime' : 'red'}>
                     {apiKey.isActive ? 'Active' : 'Inactive'}
@@ -396,22 +409,45 @@ export default function Home() {
         </DialogDescription>
         <DialogBody>
           <div className="space-y-4">
-            <Field>
-              <Label>Team Member</Label>
-              <Select
-                name="teamMember"
-                value={selectedTeamMember || ''}
-                onChange={(e) => setSelectedTeamMember(e.target.value ? parseInt(e.target.value) : null)}
-                disabled={createLoading}
-              >
-                <option value="">Select team member</option>
-                {teamMembers.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name} {member.email && `(${member.email})`}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {!createdApiKey ? (
+              <Field>
+                <Label>Team Member</Label>
+                <Select
+                  name="teamMember"
+                  value={selectedTeamMember || ''}
+                  onChange={(e) => setSelectedTeamMember(e.target.value ? parseInt(e.target.value) : null)}
+                  disabled={createLoading}
+                >
+                  <option value="">Select team member</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} {member.email && `(${member.email})`}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : (
+              <div className="space-y-4">
+                <Divider className="my-4" />
+                  <div className="mt-2 text-pretty text-base/6 text-zinc-500 sm:text-sm/6">
+                    Your API key has been generated. Copy it now as it won't be shown again.
+                  </div>
+                
+                <Field>
+                  <Label>API Key</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      readOnly 
+                      value={createdApiKey} 
+                      className="font-mono text-sm"
+                    />
+                    <Button type="button" onClick={copyApiKeyToClipboard}>
+                      {apiKeyCopied ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+                </Field>
+              </div>
+            )}
             
             {createError && (
               <div className="text-red-600 text-sm mt-2">
@@ -422,25 +458,27 @@ export default function Home() {
         </DialogBody>
         <DialogActions>
           <Button plain onClick={handleCloseModal} disabled={createLoading}>
-            Cancel
+            {createdApiKey ? 'Close' : 'Cancel'}
           </Button>
-          <Button onClick={handleCreateApiKey} disabled={createLoading || !selectedTeamMember}>
-            {createLoading ? (
-              <div className="flex items-center">
-                <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Creating...
-              </div>
-            ) : (
-              'Create API Key'
-            )}
-          </Button>
+          {!createdApiKey && (
+            <Button onClick={handleCreateApiKey} disabled={createLoading || !selectedTeamMember}>
+              {createLoading ? (
+                <div className="flex items-center">
+                  <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Creating...
+                </div>
+              ) : (
+                'Create API Key'
+              )}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
