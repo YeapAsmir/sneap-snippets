@@ -392,9 +392,9 @@ export default function Home() {
       <Alert open={isDeleteAlertOpen} onClose={setIsDeleteAlertOpen}>
         <AlertTitle>Are you sure you want to delete this API key?</AlertTitle>
         <AlertDescription>
-          This action will permanently remove the API key assigned to user {keyToDelete?.userName}.
+          This action will deactivate and archive the API key assigned to user {keyToDelete?.userName}.
           <Input readOnly value={keyToDelete?.keyId} className="my-3" />
-          Once deleted, all applications using this key will immediately lose access and this operation cannot be reversed.
+          The key will be immediately disabled and removed from the active list while preserving historical data and metrics for archival purposes.
         </AlertDescription>
         <AlertActions>
           <Button plain onClick={cancelDeleteApiKey} disabled={deleteLoading}>

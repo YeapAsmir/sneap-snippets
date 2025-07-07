@@ -7,9 +7,11 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
   server.get('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
     try {
       const keys = await db.getAllApiKeys();
-      // Filter out system keys
+      // Filter out system keys and deleted keys
       const filteredKeys = keys.filter(key => 
-        key.userName !== 'system' && key.userName !== 'System'
+        key.userName !== 'system' && 
+        key.userName !== 'System' &&
+        !key.userName.startsWith('[DELETED]')
       );
       return {
         success: true,
@@ -97,11 +99,16 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
     const { keyId } = request.params;
     
     try {
-      const deleted = await db.deleteApiKey(keyId);
+      // Instead of deleting, we deactivate the API key to preserve historical data
+      // This prevents FOREIGN KEY constraint errors while maintaining data integrity
+      const updated = await db.updateApiKey(keyId, { 
+        isActive: false,
+        userName: `[DELETED] ${new Date().toISOString().split('T')[0]}` // Mark as deleted with date
+      });
       
       return {
-        success: deleted,
-        message: deleted ? 'API key deleted' : 'API key not found'
+        success: !!updated,
+        message: updated ? 'API key deactivated and archived' : 'API key not found'
       };
     } catch (error: any) {
       return {
