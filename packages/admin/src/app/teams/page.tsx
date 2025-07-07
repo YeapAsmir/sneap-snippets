@@ -6,6 +6,7 @@ import {
     AlertActions,
     AlertDescription
 }                          from '@/components/alert';
+import { Avatar }          from '@/components/avatar';
 import { Button }          from '@/components/button';
 import {
     Dialog,
@@ -35,6 +36,7 @@ import {
     updateTeamMember,
     deleteTeamMember
 }                          from '@/data';
+import { getAvatarColors } from '@/lib/utils';
 import {
     useState,
     useEffect
@@ -314,15 +316,12 @@ export default function Teams() {
         {teamMembers.map((member) => (
           <div key={member.id} className="flex items-center justify-between gap-4 py-4 border-b border-zinc-950/5">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="relative size-6 shrink-0 inline-grid align-middle [--avatar-radius:20%] *:col-start-1 *:row-start-1 outline -outline-offset-1 outline-black/10 rounded-full *:rounded-full">
-                {member.avatar ? (
-                  <img className="size-full" src={member.avatar} alt={member.name} />
-                ) : (
-                  <div className="size-full bg-zinc-300 flex items-center justify-center text-xs font-medium text-zinc-700">
-                    {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </div>
-                )}
-              </span>
+              <Avatar 
+                src={member.avatar}
+                initials={member.avatar ? undefined : member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                alt={member.name}
+                className={`size-6 outline-0 border-0 ${!member.avatar ? getAvatarColors(member.name) : ''}`}
+              />
               <div className="min-w-0">
                 <div className="font-medium text-zinc-900">{member.name}</div>
               </div>

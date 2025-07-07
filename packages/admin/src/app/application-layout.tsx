@@ -97,7 +97,7 @@ export function ApplicationLayout({
               </SidebarItem> */}
               <SidebarItem href="/teams" current={pathname.startsWith('/teams')}>
                 <UsersIcon />
-                <SidebarLabel>Team</SidebarLabel>
+                <SidebarLabel>Teams</SidebarLabel>
               </SidebarItem>
               <SidebarItem href="/settings" current={pathname.startsWith('/settings')}>
                 <Cog6ToothIcon />

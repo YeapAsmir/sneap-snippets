@@ -45,11 +45,25 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
             error: 'Invalid team member ID'
           };
         }
+        
+        // Check if team member already has maximum number of API keys (2)
+        const allApiKeys = await db.getAllApiKeys();
+        const memberKeys = allApiKeys.filter(key => key.teamMemberId === teamMemberId && key.isActive);
+        
+        if (memberKeys.length >= 2) {
+          return {
+            success: false,
+            error: 'Maximum of 2 active API keys allowed per team member'
+          };
+        }
       }
+      
+      // Capitalize first letter of name
+      const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
       
       // Sanitize username to create prefix
       // Remove special characters, spaces, and convert to lowercase
-      const sanitizedPrefix = userName
+      const sanitizedPrefix = capitalizedName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric characters
         .substring(0, 20); // Limit length
@@ -64,7 +78,7 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
       const keyId = db.generateApiKey(sanitizedPrefix);
       const newKey = await db.createApiKey({
         keyId,
-        userName,
+        userName: capitalizedName,
         prefix: sanitizedPrefix,
         teamMemberId: teamMemberId || null
       });

@@ -7,6 +7,7 @@ import {
     AlertActions,
     AlertDescription
 }                                 from '@/components/alert';
+import { Avatar }                 from '@/components/avatar';
 import { Badge }                  from '@/components/badge';
 import { Button }                 from '@/components/button';
 import {
@@ -50,6 +51,7 @@ import {
     getAdminStats,
     getTeamMembers
 }                                 from '@/data';
+import { getAvatarColors }        from '@/lib/utils';
 import { EllipsisHorizontalIcon } from '@heroicons/react/16/solid';
 import {
     useState,
@@ -369,7 +371,25 @@ export default function Home() {
                     day: 'numeric' 
                   })}
                 </TableCell>
-                <TableCell className="font-medium">{apiKey.userName}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-3">
+                    {apiKey.teamMember ? (
+                      <Avatar 
+                        src={apiKey.teamMember.avatar}
+                        initials={apiKey.teamMember.avatar ? undefined : apiKey.teamMember.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        alt={apiKey.teamMember.name}
+                        className={`size-6 outline-0 border-0 ${!apiKey.teamMember.avatar ? getAvatarColors(apiKey.teamMember.name) : ''}`}
+                      />
+                    ) : (
+                      <Avatar 
+                        initials={apiKey.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        alt={apiKey.userName}
+                        className={`size-6 outline-0 border-0 ${getAvatarColors(apiKey.userName)}`}
+                      />
+                    )}
+                    <span>{apiKey.userName}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="font-mono text-sm">
                   {apiKey.keyId.slice(0, 8)}...{apiKey.keyId.slice(-4)}
                 </TableCell>
