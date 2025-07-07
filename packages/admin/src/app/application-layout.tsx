@@ -33,7 +33,6 @@ import {
     UsersIcon,
     Cog6ToothIcon
 }                                  from '@heroicons/react/20/solid';
-import { UserIcon }                from '@heroicons/react/24/outline';
 import { usePathname }             from 'next/navigation';
 
 function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' }) {
@@ -96,7 +95,7 @@ export function ApplicationLayout({
                 <ChartBarSquareIcon />
                 <SidebarLabel>Metrics</SidebarLabel>
               </SidebarItem> */}
-              <SidebarItem href="/teams" current={pathname.startsWith('/metrics')}>
+              <SidebarItem href="/teams" current={pathname.startsWith('/teams')}>
                 <UsersIcon />
                 <SidebarLabel>Team</SidebarLabel>
               </SidebarItem>

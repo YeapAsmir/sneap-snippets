@@ -6,9 +6,9 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
   // Admin Panel API Routes
   server.get('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
     try {
-      const keys = await db.getAllApiKeys();
+      const keysWithMembers = await db.getApiKeysWithTeamMembers();
       // Filter out system keys and deleted keys
-      const filteredKeys = keys.filter(key => 
+      const filteredKeys = keysWithMembers.filter(key => 
         key.userName !== 'system' && 
         key.userName !== 'System' &&
         !key.userName.startsWith('[DELETED]')
@@ -26,7 +26,7 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
   });
 
   server.post('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
-    const { userName } = request.body;
+    const { userName, teamMemberId } = request.body;
     
     if (!userName) {
       return {
@@ -36,6 +36,17 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
     }
     
     try {
+      // If teamMemberId is provided, verify it exists
+      if (teamMemberId) {
+        const teamMember = await db.getTeamMemberById(teamMemberId);
+        if (!teamMember) {
+          return {
+            success: false,
+            error: 'Invalid team member ID'
+          };
+        }
+      }
+      
       // Sanitize username to create prefix
       // Remove special characters, spaces, and convert to lowercase
       const sanitizedPrefix = userName
@@ -54,7 +65,8 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
       const newKey = await db.createApiKey({
         keyId,
         userName,
-        prefix: sanitizedPrefix
+        prefix: sanitizedPrefix,
+        teamMemberId: teamMemberId || null
       });
       
       return {
@@ -109,6 +121,138 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
       return {
         success: !!updated,
         message: updated ? 'API key deactivated and archived' : 'API key not found'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  // Team Members Management
+  server.get('/admin/team-members', { preHandler: validateJWT }, async (request: any, reply) => {
+    try {
+      const members = await db.getAllTeamMembers();
+      return {
+        success: true,
+        data: members
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.post('/admin/team-members', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { name, email, avatar } = request.body;
+    
+    if (!name) {
+      return {
+        success: false,
+        error: 'Name is required'
+      };
+    }
+    
+    try {
+      // Capitalize first letter of name
+      const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
+      
+      const newMember = await db.createTeamMember({
+        name: capitalizedName,
+        email,
+        avatar
+      });
+      
+      return {
+        success: true,
+        data: newMember
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.put('/admin/team-members/:id', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    const updates = request.body;
+    
+    try {
+      // Capitalize first letter of name if it's being updated
+      if (updates.name) {
+        updates.name = updates.name.charAt(0).toUpperCase() + updates.name.slice(1);
+      }
+      
+      const updated = await db.updateTeamMember(parseInt(id), updates);
+      
+      if (updated) {
+        return {
+          success: true,
+          data: updated
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'Team member not found'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.delete('/admin/team-members/:id', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    
+    try {
+      const deleted = await db.deleteTeamMember(parseInt(id));
+      
+      return {
+        success: deleted,
+        message: deleted ? 'Team member deleted successfully' : 'Team member not found'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  // Upload avatar endpoint
+  server.post('/admin/team-members/:id/avatar', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    const { avatar } = request.body;
+    
+    if (!avatar) {
+      return {
+        success: false,
+        error: 'Avatar data is required'
+      };
+    }
+    
+    try {
+      // Save the avatar as base64 string in the database
+      const updated = await db.updateTeamMember(parseInt(id), { avatar });
+      
+      if (updated) {
+        return {
+          success: true,
+          data: updated
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'Team member not found'
       };
     } catch (error: any) {
       return {

@@ -4,6 +4,15 @@
 const API_BASE_URL = 'http://localhost:3001';
 
 // Types for API responses
+export interface TeamMember {
+  id: number;
+  name: string;
+  email?: string;
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApiKey {
   keyId: string;
   userName: string;
@@ -11,6 +20,7 @@ export interface ApiKey {
   usageCount: number;
   lastUsed: string | null;
   createdAt: string;
+  teamMember?: TeamMember;
 }
 
 export interface Stats {
@@ -91,12 +101,17 @@ export async function getApiKeys(): Promise<ApiKey[]> {
   }
 }
 
-export async function createApiKey(userName: string): Promise<ApiKey> {
+export async function createApiKey(userName: string, teamMemberId?: number): Promise<ApiKey> {
   try {
+    const body: any = { userName };
+    if (teamMemberId) {
+      body.teamMemberId = teamMemberId;
+    }
+    
     const response = await fetch(`${API_BASE_URL}/admin/api-keys`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ userName })
+      body: JSON.stringify(body)
     });
     
     handleAuthError(response);
@@ -176,6 +191,119 @@ export async function getAdminStats(period: string = 'last_week'): Promise<Admin
     }
   } catch (error) {
     console.error('Error fetching admin stats:', error);
+    throw error;
+  }
+}
+
+// Team Members API functions
+export async function getTeamMembers(): Promise<TeamMember[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/team-members`, {
+      headers: getAuthHeaders()
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to fetch team members');
+    }
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    throw error;
+  }
+}
+
+export async function createTeamMember(memberData: { name: string; email?: string; avatar?: string }): Promise<TeamMember> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/team-members`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(memberData)
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to create team member');
+    }
+  } catch (error) {
+    console.error('Error creating team member:', error);
+    throw error;
+  }
+}
+
+export async function updateTeamMember(id: number, updates: Partial<TeamMember>): Promise<TeamMember> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/team-members/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates)
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to update team member');
+    }
+  } catch (error) {
+    console.error('Error updating team member:', error);
+    throw error;
+  }
+}
+
+export async function deleteTeamMember(id: number): Promise<boolean> {
+  try {
+    const headers = getAuthHeaders();
+    // Remove Content-Type for DELETE request to avoid empty body error
+    delete (headers as any)['Content-Type'];
+    
+    const response = await fetch(`${API_BASE_URL}/admin/team-members/${id}`, {
+      method: 'DELETE',
+      headers: headers
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    return data.success;
+  } catch (error) {
+    console.error('Error deleting team member:', error);
+    throw error;
+  }
+}
+
+export async function uploadTeamMemberAvatar(id: number, avatar: string): Promise<TeamMember> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/team-members/${id}/avatar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ avatar })
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to upload avatar');
+    }
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
     throw error;
   }
 }

@@ -46,7 +46,8 @@ import {
     createApiKey,
     updateApiKey,
     deleteApiKey,
-    getAdminStats
+    getAdminStats,
+    getTeamMembers
 }                                 from '@/data';
 import { EllipsisHorizontalIcon } from '@heroicons/react/16/solid';
 import {
@@ -56,7 +57,8 @@ import {
 import type {
     Stats,
     ApiKey,
-    AdminStats
+    AdminStats,
+    TeamMember
 }                                 from '@/data';
 
 export default function Home() {
@@ -72,6 +74,8 @@ export default function Home() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
   const [userName, setUserName] = useState('')
+  const [selectedTeamMember, setSelectedTeamMember] = useState<number | null>(null)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [createError, setCreateError] = useState<string | null>(null)
   
   // Alert state for API key deletion
@@ -88,14 +92,16 @@ export default function Home() {
     async function loadInitialData() {
       try {
         setLoading(true)
-        const [keysData, adminData, statsData] = await Promise.all([
+        const [keysData, adminData, statsData, membersData] = await Promise.all([
           getApiKeys(),
           getAdminStats(period),
-          getStats()
+          getStats(),
+          getTeamMembers()
         ])
         setApiKeys(keysData)
         setAdminStats(adminData)
         setStats(statsData)
+        setTeamMembers(membersData)
       } catch (err: any) {
         setError(err.message || 'Failed to load data')
         console.error('Error loading admin data:', err)
@@ -143,23 +149,31 @@ export default function Home() {
 
   // Handle API key creation
   const handleCreateApiKey = async () => {
-    if (!userName.trim()) {
-      setCreateError('Username is required')
+    if (!selectedTeamMember) {
+      setCreateError('Team member is required')
       return
     }
 
     try {
       setCreateLoading(true)
       setCreateError(null)
-      // Send only userName, backend will generate prefix automatically
-      await createApiKey(userName.trim())
+      
+      // Find the selected team member to get their name
+      const teamMember = teamMembers.find(member => member.id === selectedTeamMember)
+      if (!teamMember) {
+        setCreateError('Invalid team member selected')
+        return
+      }
+      
+      // Use team member name as username
+      await createApiKey(teamMember.name, selectedTeamMember)
       
       // Refresh API keys list
       const keysData = await getApiKeys()
       setApiKeys(keysData)
       
       // Reset form
-      setUserName('')
+      setSelectedTeamMember(null)
       setIsCreateModalOpen(false)
       
     } catch (err: any) {
@@ -172,7 +186,7 @@ export default function Home() {
   // Reset modal state when closing
   const handleCloseModal = () => {
     setIsCreateModalOpen(false)
-    setUserName('')
+    setSelectedTeamMember(null)
     setCreateError(null)
   }
 
@@ -318,49 +332,59 @@ export default function Home() {
       <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
         <TableHead>
           <TableRow>
-            <TableHeader>Name</TableHeader>
+            <TableHeader>Creation date</TableHeader>
+            <TableHeader>User</TableHeader>
             <TableHeader>Key</TableHeader>
             <TableHeader>Status</TableHeader>
-            <TableHeader>Usage</TableHeader>
-            <TableHeader>Created</TableHeader>
             <TableHeader className="relative w-0">
             <span className="sr-only">Actions</span>
           </TableHeader>
           </TableRow>
         </TableHead>
         <TableBody>
-          {apiKeys.map((apiKey) => (
-            <TableRow key={apiKey.keyId} title={`API Key ${apiKey.keyId}`}>
-              <TableCell className="font-medium">{apiKey.userName}</TableCell>
-              <TableCell className="font-mono text-sm">{apiKey.keyId}</TableCell>
-              <TableCell>
-                <Badge color={apiKey.isActive ? 'lime' : 'red'}>
-                  {apiKey.isActive ? 'Active' : 'Inactive'}
-                </Badge>
+          {apiKeys.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-8 text-zinc-500">
+                No API keys yet. Create your first API key to get started.
               </TableCell>
-              <TableCell>{apiKey.usageCount}</TableCell>
-              <TableCell className="text-zinc-500">
-                {new Date(Number(apiKey.createdAt) * 1000).toLocaleDateString()}
-              </TableCell>
-              <TableCell>
-              <div className="-mx-3 -my-1.5 sm:-mx-2.5">
-                <Dropdown>
-                  <DropdownButton plain aria-label="More options">
-                    <EllipsisHorizontalIcon />
-                  </DropdownButton>
-                  <DropdownMenu anchor="bottom end">
-                    <DropdownItem onClick={() => handleToggleApiKey(apiKey.keyId, apiKey.isActive)}>
-                      {apiKey.isActive ? 'Disable' : 'Activate'}
-                    </DropdownItem>
-                    <DropdownItem onClick={() => handleDeleteApiKey(apiKey)}>
-                      Delete
-                    </DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
-            </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            apiKeys.map((apiKey) => (
+              <TableRow key={apiKey.keyId} title={`API Key ${apiKey.keyId}`}>
+                <TableCell className="text-zinc-500">
+                  {new Date(Number(apiKey.createdAt) * 1000).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </TableCell>
+                <TableCell className="font-medium">{apiKey.userName}</TableCell>
+                <TableCell className="font-mono text-sm">{apiKey.keyId}</TableCell>
+                <TableCell>
+                  <Badge color={apiKey.isActive ? 'lime' : 'red'}>
+                    {apiKey.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                <div className="-mx-3 -my-1.5 sm:-mx-2.5">
+                  <Dropdown>
+                    <DropdownButton plain aria-label="More options">
+                      <EllipsisHorizontalIcon />
+                    </DropdownButton>
+                    <DropdownMenu anchor="bottom end">
+                      <DropdownItem onClick={() => handleToggleApiKey(apiKey.keyId, apiKey.isActive)}>
+                        {apiKey.isActive ? 'Disable' : 'Activate'}
+                      </DropdownItem>
+                      <DropdownItem onClick={() => handleDeleteApiKey(apiKey)}>
+                        Delete
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+              </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
 
@@ -368,19 +392,25 @@ export default function Home() {
       <Dialog size="xl" open={isCreateModalOpen} onClose={handleCloseModal}>
         <DialogTitle>Create New API Key</DialogTitle>
         <DialogDescription>
-          Generate a new API key for accessing the Sneap API. The prefix will be automatically generated from the username.
+          Generate a new API key for accessing the Sneap API. Select a team member to create the key for.
         </DialogDescription>
         <DialogBody>
           <div className="space-y-4">
             <Field>
-              <Label>Username</Label>
-              <Input 
-                name="username" 
-                placeholder="Enter username" 
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
+              <Label>Team Member</Label>
+              <Select
+                name="teamMember"
+                value={selectedTeamMember || ''}
+                onChange={(e) => setSelectedTeamMember(e.target.value ? parseInt(e.target.value) : null)}
                 disabled={createLoading}
-              />
+              >
+                <option value="">Select team member</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name} {member.email && `(${member.email})`}
+                  </option>
+                ))}
+              </Select>
             </Field>
             
             {createError && (
@@ -394,7 +424,7 @@ export default function Home() {
           <Button plain onClick={handleCloseModal} disabled={createLoading}>
             Cancel
           </Button>
-          <Button onClick={handleCreateApiKey} disabled={createLoading || !userName.trim()}>
+          <Button onClick={handleCreateApiKey} disabled={createLoading || !selectedTeamMember}>
             {createLoading ? (
               <div className="flex items-center">
                 <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">

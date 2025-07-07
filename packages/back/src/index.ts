@@ -11,7 +11,8 @@ import { adminRoutes }     from './routes/admin';
 import 'dotenv/config';
 
 const server = fastify({
-  logger: true
+  logger: true,
+  bodyLimit: 10 * 1024 * 1024 // 10MB limit for image uploads
 });
 
 // Initialize services

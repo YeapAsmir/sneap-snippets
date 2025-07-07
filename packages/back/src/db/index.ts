@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database from 'better-sqlite3';
 import { eq, desc, like, count, sql, and, or } from 'drizzle-orm';
-import { snippets, usageMetrics, apiKeys } from './schema';
-import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey } from './schema';
+import { snippets, usageMetrics, apiKeys, teamMembers } from './schema';
+import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, TeamMember, NewTeamMember } from './schema';
 
 export class DrizzleDatabase {
   private db: ReturnType<typeof drizzle>;
@@ -377,6 +377,57 @@ export class DrizzleDatabase {
     return `${prefix}_${timestamp}${random}`;
   }
 
+  // Team Members Management
+  async createTeamMember(memberData: NewTeamMember): Promise<TeamMember> {
+    const [created] = await this.db.insert(teamMembers).values({
+      ...memberData,
+      createdAt: sql`(unixepoch())`,
+      updatedAt: sql`(unixepoch())`
+    }).returning();
+    return created;
+  }
+
+  async getAllTeamMembers(): Promise<TeamMember[]> {
+    return await this.db.select().from(teamMembers).orderBy(desc(teamMembers.createdAt));
+  }
+
+  async getTeamMemberById(id: number): Promise<TeamMember | null> {
+    const [member] = await this.db.select().from(teamMembers).where(eq(teamMembers.id, id));
+    return member || null;
+  }
+
+  async updateTeamMember(id: number, updates: Partial<NewTeamMember>): Promise<TeamMember | null> {
+    const [updated] = await this.db.update(teamMembers)
+      .set({
+        ...updates,
+        updatedAt: sql`(unixepoch())`
+      })
+      .where(eq(teamMembers.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteTeamMember(id: number): Promise<boolean> {
+    const result = await this.db.delete(teamMembers).where(eq(teamMembers.id, id));
+    return result.changes > 0;
+  }
+
+  async getApiKeysWithTeamMembers(): Promise<any[]> {
+    const result = await this.db
+      .select({
+        apiKey: apiKeys,
+        teamMember: teamMembers
+      })
+      .from(apiKeys)
+      .leftJoin(teamMembers, eq(apiKeys.teamMemberId, teamMembers.id))
+      .orderBy(desc(apiKeys.createdAt));
+
+    return result.map(row => ({
+      ...row.apiKey,
+      teamMember: row.teamMember
+    }));
+  }
+
   async getUniqueCategories(): Promise<string[]> {
     const result = await this.db
       .selectDistinct({ category: snippets.category })
@@ -465,5 +516,5 @@ export class DrizzleDatabase {
   }
 }
 
-export { snippets, usageMetrics, apiKeys };
-export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey };
+export { snippets, usageMetrics, apiKeys, teamMembers };
+export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, TeamMember, NewTeamMember };

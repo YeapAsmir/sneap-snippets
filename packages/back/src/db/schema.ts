@@ -39,11 +39,23 @@ export const usageMetrics = sqliteTable('usage_metrics', {
 });
 
 
+export const teamMembers = sqliteTable('team_members', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  email: text('email'),
+  avatar: text('avatar'), // File path for uploaded avatar
+  
+  // Metadata
+  createdAt: integer('created_at').default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`)
+});
+
 export const apiKeys = sqliteTable('api_keys', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   keyId: text('key_id').notNull().unique(), // e.g., asmr_9kdoe24fjzi2
   userName: text('user_name').notNull(), // Display name
   prefix: text('prefix').notNull(), // User prefix (asmr, john, etc.)
+  teamMemberId: integer('team_member_id').references(() => teamMembers.id),
   
   // Key management
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
@@ -58,5 +70,7 @@ export type Snippet = typeof snippets.$inferSelect;
 export type NewSnippet = typeof snippets.$inferInsert;
 export type UsageMetric = typeof usageMetrics.$inferSelect;
 export type NewUsageMetric = typeof usageMetrics.$inferInsert;
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type NewTeamMember = typeof teamMembers.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
