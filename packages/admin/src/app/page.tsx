@@ -1,11 +1,37 @@
+'use client'
 // Misc
-import { Stat }            from '@/app/stat';
-import { Avatar }          from '@/components/avatar';
+import { Stat }                   from '@/app/stat';
+import {
+    Alert,
+    AlertTitle,
+    AlertActions,
+    AlertDescription
+}                                 from '@/components/alert';
+import { Badge }                  from '@/components/badge';
+import { Button }                 from '@/components/button';
+import {
+    Dialog,
+    DialogBody,
+    DialogTitle,
+    DialogActions,
+    DialogDescription
+}                                 from '@/components/dialog';
+import {
+    Dropdown,
+    DropdownItem,
+    DropdownMenu,
+    DropdownButton
+}                                 from '@/components/dropdown';
+import {
+    Field,
+    Label
+}                                 from '@/components/fieldset';
 import {
     Heading,
     Subheading
-}                          from '@/components/heading';
-import { Select }          from '@/components/select';
+}                                 from '@/components/heading';
+import { Input }                  from '@/components/input';
+import { Select }                 from '@/components/select';
 import {
     Table,
     TableRow,
@@ -13,11 +39,198 @@ import {
     TableCell,
     TableHead,
     TableHeader
-}                          from '@/components/table';
-import { getRecentOrders } from '@/data';
+}                                 from '@/components/table';
+import {
+    getStats,
+    getApiKeys,
+    createApiKey,
+    updateApiKey,
+    deleteApiKey,
+    getAdminStats
+}                                 from '@/data';
+import { EllipsisHorizontalIcon } from '@heroicons/react/16/solid';
+import {
+    useState,
+    useEffect
+}                                 from 'react';
+import type {
+    Stats,
+    ApiKey,
+    AdminStats
+}                                 from '@/data';
 
-export default async function Home() {
-  let orders = await getRecentOrders()
+export default function Home() {
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [period, setPeriod] = useState('last_week')
+  
+  // Modal state for creating API key
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [userName, setUserName] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  
+  // Alert state for API key deletion
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false)
+  const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Load initial data (API keys and base stats) only once
+  useEffect(() => {
+    async function loadInitialData() {
+      try {
+        setLoading(true)
+        const [keysData, adminData, statsData] = await Promise.all([
+          getApiKeys(),
+          getAdminStats(period),
+          getStats()
+        ])
+        setApiKeys(keysData)
+        setAdminStats(adminData)
+        setStats(statsData)
+      } catch (err: any) {
+        setError(err.message || 'Failed to load data')
+        console.error('Error loading admin data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInitialData()
+  }, []) // Only run once on mount
+
+  // Load stats when period changes (but not on initial load)
+  useEffect(() => {
+    async function loadStatsForPeriod() {
+      try {
+        setStatsLoading(true)
+        const adminData = await getAdminStats(period)
+        setAdminStats(adminData)
+      } catch (err: any) {
+        setError(err.message || 'Failed to load statistics')
+        console.error('Error loading stats for period:', err)
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+
+    // Don't run on initial render, only when period actually changes
+    if (adminStats) {
+      loadStatsForPeriod()
+    }
+  }, [period])
+
+  // Handle API key creation
+  const handleCreateApiKey = async () => {
+    if (!userName.trim()) {
+      setCreateError('Username is required')
+      return
+    }
+
+    try {
+      setCreateLoading(true)
+      setCreateError(null)
+      // Send only userName, backend will generate prefix automatically
+      await createApiKey(userName.trim())
+      
+      // Refresh API keys list
+      const keysData = await getApiKeys()
+      setApiKeys(keysData)
+      
+      // Reset form
+      setUserName('')
+      setIsCreateModalOpen(false)
+      
+    } catch (err: any) {
+      setCreateError(err.message || 'Failed to create API key')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  // Reset modal state when closing
+  const handleCloseModal = () => {
+    setIsCreateModalOpen(false)
+    setUserName('')
+    setCreateError(null)
+  }
+
+  // Handle API key deletion - show alert
+  const handleDeleteApiKey = async (apiKey: ApiKey) => {
+    setKeyToDelete(apiKey)
+    setIsDeleteAlertOpen(true)
+  }
+
+  // Confirm API key deletion
+  const confirmDeleteApiKey = async () => {
+    if (!keyToDelete) return
+
+    try {
+      setDeleteLoading(true)
+      await deleteApiKey(keyToDelete.keyId)
+      
+      // Refresh API keys list
+      const keysData = await getApiKeys()
+      setApiKeys(keysData)
+      
+      // Close alert
+      setIsDeleteAlertOpen(false)
+      setKeyToDelete(null)
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete API key')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  // Cancel API key deletion
+  const cancelDeleteApiKey = () => {
+    setIsDeleteAlertOpen(false)
+    setKeyToDelete(null)
+  }
+
+  // Handle API key toggle (activate/deactivate)
+  const handleToggleApiKey = async (keyId: string, isActive: boolean) => {
+    try {
+      await updateApiKey(keyId, { isActive: !isActive })
+      
+      // Refresh API keys list
+      const keysData = await getApiKeys()
+      setApiKeys(keysData)
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to update API key')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-600">Error: {error}</div>
+      </div>
+    )
+  }
+
+  if (!adminStats || !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">No data available</div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -25,7 +238,7 @@ export default async function Home() {
       <div className="mt-8 flex items-end justify-between">
         <Subheading>Overview</Subheading>
         <div>
-          <Select name="period">
+          <Select name="period" value={period} onChange={(e) => setPeriod(e.target.value)}>
             <option value="last_week">Last week</option>
             <option value="last_two">Last two weeks</option>
             <option value="last_month">Last month</option>
@@ -33,39 +246,179 @@ export default async function Home() {
           </Select>
         </div>
       </div>
-      <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
-        <Stat title="Total revenue" value="$2.6M" change="+4.5%" />
-        <Stat title="Average order value" value="$455" change="-0.5%" />
-        <Stat title="Tickets sold" value="5,888" change="+4.5%" />
+      <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat 
+          title="Total API Keys" 
+          value={stats.totalKeys.toString()} 
+          change={adminStats.comparison ? `${adminStats.comparison.totalKeys.change >= 0 ? '+' : ''}${adminStats.comparison.totalKeys.change.toFixed(1)}%` : undefined}
+          period={period}
+          loading={statsLoading}
+        />
+        <Stat 
+          title="Active Keys" 
+          value={stats.activeKeys.toString()} 
+          change={adminStats.comparison ? `${adminStats.comparison.activeKeys.change >= 0 ? '+' : ''}${adminStats.comparison.activeKeys.change.toFixed(1)}%` : undefined}
+          period={period}
+          loading={statsLoading}
+        />
+        <Stat 
+          title="Total Usage" 
+          value={stats.totalUsage.toString()} 
+          change={adminStats.comparison ? `${adminStats.comparison.totalUsage.change >= 0 ? '+' : ''}${adminStats.comparison.totalUsage.change.toFixed(1)}%` : undefined}
+          period={period}
+          loading={statsLoading}
+        />
+        <Stat 
+          title="Total Snippets" 
+          value={adminStats.snippets.total.toString()} 
+          change={adminStats.comparison ? `${adminStats.comparison.totalSnippets.change >= 0 ? '+' : ''}${adminStats.comparison.totalSnippets.change.toFixed(1)}%` : undefined}
+          period={period}
+          loading={statsLoading}
+        />
       </div>
-      <Subheading className="mt-14">API Keys</Subheading>
+      {/* <div className="mt-8 grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
+        <Stat title="Unique Users" value={adminStats.usage.uniqueUsers.toString()} />
+        <Stat title="Success Rate" value={`${adminStats.usage.successRate.toFixed(1)}%`} />
+        <Stat title="Categories" value={adminStats.snippets.categories.toString()} />
+      </div> */}
+      <div className="mt-14 flex items-end justify-between">
+        <Subheading>API Keys</Subheading>
+        <Button type="button" onClick={() => setIsCreateModalOpen(true)}>
+          Create API Key
+        </Button>
+      </div>
       <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
         <TableHead>
           <TableRow>
-            <TableHeader>Order number</TableHeader>
-            <TableHeader>Purchase date</TableHeader>
-            <TableHeader>Customer</TableHeader>
-            <TableHeader>Event</TableHeader>
-            <TableHeader className="text-right">Amount</TableHeader>
+            <TableHeader>Name</TableHeader>
+            <TableHeader>Key ID</TableHeader>
+            <TableHeader>Status</TableHeader>
+            <TableHeader>Usage</TableHeader>
+            <TableHeader>Created</TableHeader>
+            <TableHeader className="relative w-0">
+            <span className="sr-only">Actions</span>
+          </TableHeader>
           </TableRow>
         </TableHead>
         <TableBody>
-          {orders.map((order) => (
-            <TableRow key={order.id} href={order.url} title={`Order #${order.id}`}>
-              <TableCell>{order.id}</TableCell>
-              <TableCell className="text-zinc-500">{order.date}</TableCell>
-              <TableCell>{order.customer.name}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar src={order.event.thumbUrl} className="size-6" />
-                  <span>{order.event.name}</span>
-                </div>
+          {apiKeys.map((apiKey) => (
+            <TableRow key={apiKey.keyId} title={`API Key ${apiKey.keyId}`}>
+              <TableCell className="font-medium">{apiKey.userName}</TableCell>
+              <TableCell className="font-mono text-sm">
+                {apiKey.keyId}
               </TableCell>
-              <TableCell className="text-right">US{order.amount.usd}</TableCell>
+              <TableCell>
+                <Badge color={apiKey.isActive ? 'lime' : 'red'}>
+                  {apiKey.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell>{apiKey.usageCount}</TableCell>
+              <TableCell className="text-zinc-500">
+                {new Date(Number(apiKey.createdAt) * 1000).toLocaleDateString()}
+              </TableCell>
+              <TableCell>
+              <div className="-mx-3 -my-1.5 sm:-mx-2.5">
+                <Dropdown>
+                  <DropdownButton plain aria-label="More options">
+                    <EllipsisHorizontalIcon />
+                  </DropdownButton>
+                  <DropdownMenu anchor="bottom end">
+                    <DropdownItem onClick={() => handleToggleApiKey(apiKey.keyId, apiKey.isActive)}>
+                      {apiKey.isActive ? 'Disable' : 'Activate'}
+                    </DropdownItem>
+                    <DropdownItem onClick={() => handleDeleteApiKey(apiKey)}>
+                      Delete
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
+            </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {/* Create API Key Modal */}
+      <Dialog size="xl" open={isCreateModalOpen} onClose={handleCloseModal}>
+        <DialogTitle>Create New API Key</DialogTitle>
+        <DialogDescription>
+          Generate a new API key for accessing the Sneap API. The prefix will be automatically generated from the username.
+        </DialogDescription>
+        <DialogBody>
+          <div className="space-y-4">
+            <Field>
+              <Label>Username</Label>
+              <Input 
+                name="username" 
+                placeholder="Enter username" 
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                disabled={createLoading}
+              />
+            </Field>
+            
+            {createError && (
+              <div className="text-red-600 text-sm mt-2">
+                {createError}
+              </div>
+            )}
+          </div>
+        </DialogBody>
+        <DialogActions>
+          <Button plain onClick={handleCloseModal} disabled={createLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleCreateApiKey} disabled={createLoading || !userName.trim()}>
+            {createLoading ? (
+              <div className="flex items-center">
+                <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Creating...
+              </div>
+            ) : (
+              'Create API Key'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete API Key Alert */}
+      <Alert open={isDeleteAlertOpen} onClose={setIsDeleteAlertOpen}>
+        <AlertTitle>Are you sure you want to delete this API key?</AlertTitle>
+        <AlertDescription>
+          This will permanently delete the API key for user {keyToDelete?.userName}.
+          <Input readOnly value={keyToDelete?.keyId} className="my-3" />
+          This action cannot be undone and any applications using this key will lose access immediately.
+        </AlertDescription>
+        <AlertActions>
+          <Button plain onClick={cancelDeleteApiKey} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button onClick={confirmDeleteApiKey} disabled={deleteLoading}>
+            {deleteLoading ? (
+              <div className="flex items-center">
+                <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Deleting...
+              </div>
+            ) : (
+              'Delete'
+            )}
+          </Button>
+        </AlertActions>
+      </Alert>
     </>
   )
 }
