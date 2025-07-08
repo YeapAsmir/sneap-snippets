@@ -17,7 +17,7 @@ export const snippets = sqliteTable('snippets', {
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
   updatedAt: integer('updated_at').default(sql`(unixepoch())`),
-  createdBy: text('created_by').references(() => apiKeys.keyId).default('system')
+  createdBy: text('created_by').references(() => apiKeys.keyId, { onDelete: 'set default' }).default('system')
 });
 
 export const usageMetrics = sqliteTable('usage_metrics', {
@@ -65,7 +65,7 @@ export const apiKeys = sqliteTable('api_keys', {
   keyId: text('key_id').notNull().unique(), // e.g., asmr_9kdoe24fjzi2
   userName: text('user_name').notNull(), // Display name
   prefix: text('prefix').notNull(), // User prefix (asmr, john, etc.)
-  teamMemberId: integer('team_member_id').references(() => teamMembers.id),
+  teamMemberId: integer('team_member_id').references(() => teamMembers.id, { onDelete: 'set null' }),
   
   // Key management
   isActive: integer('is_active', { mode: 'boolean' }).default(true),

@@ -338,67 +338,37 @@ export default function Teams() {
     </div>
     
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {teams.map((team) => {
-          const isSelected = selectedTeam?.id === team.id
-          return (
-            <div
-              key={team.id}
-              className={`relative rounded-lg border-2 transition-all duration-200 hover:shadow-md cursor-pointer ${
-                isSelected 
-                  ? 'border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-200' 
-                  : 'border-zinc-200 bg-white hover:border-zinc-300'
-              }`}
-              onClick={() => setSelectedTeam(team)}
-            >
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${isSelected ? 'bg-blue-500' : 'bg-zinc-300'}`} />
-                    <h3 className={`font-medium ${isSelected ? 'text-blue-900' : 'text-zinc-900'}`}>
-                      {team.name}
-                    </h3>
-                  </div>
-                  <Dropdown>
-                    <DropdownButton plain className="text-zinc-400 hover:text-zinc-600">
-                      <EllipsisHorizontalIcon className="size-4" />
-                    </DropdownButton>
-                    <DropdownMenu anchor="bottom end">
-                      <DropdownItem onClick={() => handleDeleteTeam(team)}>
-                        Delete Team
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <div className="mt-2 text-sm text-zinc-500">
-                  {teamMembers.filter(member => member.teamId === team.id).length} members
-                </div>
-              </div>
-            </div>
-          )
-        })}
         
-        {teams.length === 0 && (
-          <div className="col-span-full text-center py-12 text-zinc-500">
-            <div className="mx-auto w-12 h-12 bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium text-zinc-900 mb-2">No teams yet</p>
-            <p>Create your first team to get started.</p>
+      {/* {teams.length === 0 && (
+        <div className="col-span-full text-center py-12 text-zinc-500">
+          <div className="mx-auto w-12 h-12 bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
+            <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
           </div>
-        )}
-      </div>
+          <p className="text-lg font-medium text-zinc-900 mb-2">No teams yet</p>
+          <p>Create your first team to get started.</p>
+        </div>
+      )} */}
 
       {/* Team Members Section */}
       {selectedTeam && (
         <>
           <div className="mt-8 flex items-end justify-between">
             <Subheading>{selectedTeam.name} Members</Subheading>
-            <Button type="button" onClick={() => setIsCreateMemberModalOpen(true)}>
-              Add Team Member
-            </Button>
+            <Dropdown>
+                    <DropdownButton plain aria-label="More options">
+                      <EllipsisHorizontalIcon />
+                    </DropdownButton>
+            <DropdownMenu anchor="bottom end">
+            <DropdownItem onClick={() => setIsCreateMemberModalOpen(true)}>
+             Add Member
+            </DropdownItem>
+            <DropdownItem>
+              Delete Team
+            </DropdownItem>
+          </DropdownMenu>
+            </Dropdown>
           </div>
 
           <div className="mt-4 space-y-4">
@@ -502,24 +472,28 @@ export default function Teams() {
               />
             </Field>
 
-            <Field>
+            <Field className='flex flex-col space-y-2'>
               <Label>Avatar (optional)</Label>
-              <Input 
-                name="avatar" 
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                disabled={createMemberLoading}
-              />
-              {memberAvatar && (
-                <div className="mt-2">
-                  <img 
-                    src={memberAvatar} 
-                    alt="Avatar preview" 
-                    className="w-16 h-16 rounded-full object-cover"
-                  />
+              <div className="flex items-center gap-4">
+                {memberAvatar && (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={memberAvatar} 
+                      alt="Avatar preview" 
+                      className="size-9 rounded-full object-cover"
+                      />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input 
+                    name="avatar" 
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    disabled={createMemberLoading}
+                    />
                 </div>
-              )}
+              </div>
             </Field>
             
             {createMemberError && (

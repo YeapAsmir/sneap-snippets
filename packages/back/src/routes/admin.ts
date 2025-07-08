@@ -123,19 +123,29 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
 
   server.delete('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
     const { keyId } = request.params;
+    const { force = false } = request.query as { force?: boolean };
     
     try {
-      // Instead of deleting, we deactivate the API key to preserve historical data
-      // This prevents FOREIGN KEY constraint errors while maintaining data integrity
-      const updated = await db.updateApiKey(keyId, { 
-        isActive: false,
-        userName: `[DELETED] ${new Date().toISOString().split('T')[0]}` // Mark as deleted with date
-      });
-      
-      return {
-        success: !!updated,
-        message: updated ? 'API key deactivated and archived' : 'API key not found'
-      };
+      if (force) {
+        // Perform actual deletion - the foreign key constraints will handle cascading
+        const deleted = await db.deleteApiKey(keyId);
+        
+        return {
+          success: deleted,
+          message: deleted ? 'API key permanently deleted' : 'API key not found'
+        };
+      } else {
+        // Default behavior: deactivate the API key to preserve historical data
+        const updated = await db.updateApiKey(keyId, { 
+          isActive: false,
+          userName: `[DELETED] ${new Date().toISOString().split('T')[0]}` // Mark as deleted with date
+        });
+        
+        return {
+          success: !!updated,
+          message: updated ? 'API key deactivated and archived' : 'API key not found'
+        };
+      }
     } catch (error: any) {
       return {
         success: false,
@@ -357,6 +367,8 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
     const { id } = request.params;
     
     try {
+      // With the updated foreign key constraints, deletion should work properly
+      // Associated API keys will have their teamMemberId set to null
       const deleted = await db.deleteTeamMember(parseInt(id));
       
       return {

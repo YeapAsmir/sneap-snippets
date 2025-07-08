@@ -7,7 +7,7 @@ CREATE TABLE `api_keys` (
 	`is_active` integer DEFAULT true,
 	`usage_count` integer DEFAULT 0,
 	`created_at` integer DEFAULT (unixepoch()),
-	FOREIGN KEY (`team_member_id`) REFERENCES `team_members`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`team_member_id`) REFERENCES `team_members`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `api_keys_key_id_unique` ON `api_keys` (`key_id`);--> statement-breakpoint
@@ -24,7 +24,7 @@ CREATE TABLE `snippets` (
 	`created_at` integer DEFAULT (unixepoch()),
 	`updated_at` integer DEFAULT (unixepoch()),
 	`created_by` text DEFAULT 'system',
-	FOREIGN KEY (`created_by`) REFERENCES `api_keys`(`key_id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`created_by`) REFERENCES `api_keys`(`key_id`) ON UPDATE no action ON DELETE set default
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `snippets_prefix_unique` ON `snippets` (`prefix`);--> statement-breakpoint
