@@ -4,11 +4,20 @@
 const API_BASE_URL = 'http://localhost:3001';
 
 // Types for API responses
+export interface Team {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TeamMember {
   id: number;
   name: string;
   email?: string;
   avatar?: string;
+  teamId: number;
+  team?: Team;
   createdAt: string;
   updatedAt: string;
 }
@@ -196,28 +205,8 @@ export async function getAdminStats(period: string = 'last_week'): Promise<Admin
 }
 
 // Team Members API functions
-export async function getTeamMembers(): Promise<TeamMember[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/admin/team-members`, {
-      headers: getAuthHeaders()
-    });
-    
-    handleAuthError(response);
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      return data.data;
-    } else {
-      throw new Error(data.error || 'Failed to fetch team members');
-    }
-  } catch (error) {
-    console.error('Error fetching team members:', error);
-    throw error;
-  }
-}
 
-export async function createTeamMember(memberData: { name: string; email?: string; avatar?: string }): Promise<TeamMember> {
+export async function createTeamMember(memberData: { name: string; email?: string; avatar?: string; teamId: number }): Promise<TeamMember> {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/team-members`, {
       method: 'POST',
@@ -309,6 +298,121 @@ export async function uploadTeamMemberAvatar(id: number, avatar: string): Promis
 }
 
 // Utility functions for compatibility with existing UI
+// Teams API functions
+export async function getTeams(): Promise<Team[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/teams`, {
+      headers: getAuthHeaders()
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to fetch teams');
+    }
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    throw error;
+  }
+}
+
+export async function createTeam(teamData: { name: string }): Promise<Team> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/teams`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(teamData)
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to create team');
+    }
+  } catch (error) {
+    console.error('Error creating team:', error);
+    throw error;
+  }
+}
+
+export async function updateTeam(id: number, updates: Partial<Team>): Promise<Team> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/teams/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates)
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to update team');
+    }
+  } catch (error) {
+    console.error('Error updating team:', error);
+    throw error;
+  }
+}
+
+export async function deleteTeam(id: number): Promise<boolean> {
+  try {
+    const headers = getAuthHeaders();
+    // Remove Content-Type for DELETE request to avoid empty body error
+    delete (headers as any)['Content-Type'];
+    
+    const response = await fetch(`${API_BASE_URL}/admin/teams/${id}`, {
+      method: 'DELETE',
+      headers: headers
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    return data.success;
+  } catch (error) {
+    console.error('Error deleting team:', error);
+    throw error;
+  }
+}
+
+export async function getTeamMembers(teamId?: number): Promise<TeamMember[]> {
+  try {
+    const url = teamId 
+      ? `${API_BASE_URL}/admin/teams/${teamId}/members`
+      : `${API_BASE_URL}/admin/team-members`;
+    
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
+    
+    handleAuthError(response);
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to fetch team members');
+    }
+  } catch (error) {
+    console.error('Error fetching team members:', error);
+    throw error;
+  }
+}
+
 export async function getStats(): Promise<Stats> {
   const keys = await getApiKeys();
   

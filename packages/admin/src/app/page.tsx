@@ -44,6 +44,7 @@ import {
 }                                 from '@/components/table';
 import {
     getStats,
+    getTeams,
     getApiKeys,
     createApiKey,
     updateApiKey,
@@ -58,6 +59,7 @@ import {
     useEffect
 }                                 from 'react';
 import type {
+    Team,
     Stats,
     ApiKey,
     AdminStats,
@@ -72,11 +74,13 @@ export default function Home() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState('last_week')
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<number | null>(null)
   
   // Modal state for creating API key
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
   const [selectedTeamMember, setSelectedTeamMember] = useState<number | null>(null)
+  const [teams, setTeams] = useState<Team[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [createError, setCreateError] = useState<string | null>(null)
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
@@ -90,20 +94,27 @@ export default function Home() {
   // Copy state
   const [copyCount, setCopyCount] = useState(0)
 
+  // Filter API keys based on selected team
+  const filteredApiKeys = selectedTeamFilter
+    ? apiKeys.filter(apiKey => apiKey.teamMember?.teamId === selectedTeamFilter)
+    : apiKeys
+
   // Load initial data (API keys and base stats) only once
   useEffect(() => {
     async function loadInitialData() {
       try {
         setLoading(true)
-        const [keysData, adminData, statsData, membersData] = await Promise.all([
+        const [keysData, adminData, statsData, teamsData, membersData] = await Promise.all([
           getApiKeys(),
           getAdminStats(period),
           getStats(),
+          getTeams(),
           getTeamMembers()
         ])
         setApiKeys(keysData)
         setAdminStats(adminData)
         setStats(statsData)
+        setTeams(teamsData)
         setTeamMembers(membersData)
       } catch (err: any) {
         setError(err.message || 'Failed to load data')
@@ -338,9 +349,19 @@ export default function Home() {
       </div> */}
       <div className="mt-14 flex items-end justify-between">
         <Subheading>API Keys</Subheading>
-        <Button type="button" onClick={() => setIsCreateModalOpen(true)}>
+        <div className="flex items-center gap-4">
+        <Select name="teamFilter" value={selectedTeamFilter || ''} onChange={(e) => setSelectedTeamFilter(e.target.value ? parseInt(e.target.value) : null)}>
+          <option value="">All Teams</option>
+          {teams.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </Select>
+        <Button type="button" className='shrink-0' onClick={() => setIsCreateModalOpen(true)}>
           Create API Key
         </Button>
+        </div>
       </div>
       <Table className="mt-4 [--gutter:--spacing(6)] lg:[--gutter:--spacing(10)]">
         <TableHead>
@@ -355,14 +376,14 @@ export default function Home() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {apiKeys.length === 0 ? (
+          {filteredApiKeys.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-8 text-zinc-500">
-                No API keys yet. Create your first API key to get started.
+                {selectedTeamFilter ? 'No API keys found for this team.' : 'No API keys yet. Create your first API key to get started.'}
               </TableCell>
             </TableRow>
           ) : (
-            apiKeys.map((apiKey) => (
+            filteredApiKeys.map((apiKey) => (
               <TableRow key={apiKey.keyId} title={`API Key ${apiKey.keyId}`}>
                 <TableCell className="text-zinc-500">
                   {new Date(Number(apiKey.createdAt) * 1000).toLocaleDateString('en-US', { 
@@ -387,7 +408,12 @@ export default function Home() {
                         className={`size-6 outline-0 border-0 ${getAvatarColors(apiKey.userName)}`}
                       />
                     )}
-                    <span>{apiKey.userName}</span>
+                    <div>
+                      <span>{apiKey.userName}</span>
+                      {apiKey.teamMember?.team && (
+                        <div className="text-xs text-zinc-500">{apiKey.teamMember.team.name}</div>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="font-mono text-sm">
@@ -439,10 +465,17 @@ export default function Home() {
                   disabled={createLoading}
                 >
                   <option value="">Select team member</option>
-                  {teamMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name} {member.email && `(${member.email})`}
-                    </option>
+                  {teams.map((team) => (
+                    <optgroup key={team.id} label={team.name}>
+                      {teamMembers
+                        .filter(member => member.teamId === team.id)
+                        .map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.name} {member.email && `(${member.email})`}
+                          </option>
+                        ))
+                      }
+                    </optgroup>
                   ))}
                 </Select>
               </Field>

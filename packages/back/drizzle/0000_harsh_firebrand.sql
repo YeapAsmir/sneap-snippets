@@ -3,9 +3,11 @@ CREATE TABLE `api_keys` (
 	`key_id` text NOT NULL,
 	`user_name` text NOT NULL,
 	`prefix` text NOT NULL,
+	`team_member_id` integer,
 	`is_active` integer DEFAULT true,
 	`usage_count` integer DEFAULT 0,
-	`created_at` integer DEFAULT (unixepoch())
+	`created_at` integer DEFAULT (unixepoch()),
+	FOREIGN KEY (`team_member_id`) REFERENCES `team_members`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `api_keys_key_id_unique` ON `api_keys` (`key_id`);--> statement-breakpoint
@@ -26,6 +28,24 @@ CREATE TABLE `snippets` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `snippets_prefix_unique` ON `snippets` (`prefix`);--> statement-breakpoint
+CREATE TABLE `team_members` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`email` text,
+	`avatar` text,
+	`team_id` integer NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()),
+	`updated_at` integer DEFAULT (unixepoch()),
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `teams` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()),
+	`updated_at` integer DEFAULT (unixepoch())
+);
+--> statement-breakpoint
 CREATE TABLE `usage_metrics` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`snippet_id` integer NOT NULL,

@@ -144,6 +144,108 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
     }
   });
 
+  // Teams Management
+  server.get('/admin/teams', { preHandler: validateJWT }, async (request: any, reply) => {
+    try {
+      const teams = await db.getAllTeams();
+      return {
+        success: true,
+        data: teams
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.post('/admin/teams', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { name } = request.body;
+    
+    if (!name) {
+      return {
+        success: false,
+        error: 'Name is required'
+      };
+    }
+    
+    try {
+      const newTeam = await db.createTeam({ name });
+      
+      return {
+        success: true,
+        data: newTeam
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.put('/admin/teams/:id', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    const updates = request.body;
+    
+    try {
+      const updated = await db.updateTeam(parseInt(id), updates);
+      
+      if (updated) {
+        return {
+          success: true,
+          data: updated
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'Team not found'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.delete('/admin/teams/:id', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    
+    try {
+      const deleted = await db.deleteTeam(parseInt(id));
+      
+      return {
+        success: deleted,
+        message: deleted ? 'Team deleted successfully' : 'Team not found'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
+  server.get('/admin/teams/:id/members', { preHandler: validateJWT }, async (request: any, reply) => {
+    const { id } = request.params;
+    
+    try {
+      const members = await db.getTeamMembersByTeam(parseInt(id));
+      return {
+        success: true,
+        data: members
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+
   // Team Members Management
   server.get('/admin/team-members', { preHandler: validateJWT }, async (request: any, reply) => {
     try {
@@ -161,7 +263,7 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
   });
 
   server.post('/admin/team-members', { preHandler: validateJWT }, async (request: any, reply) => {
-    const { name, email, avatar } = request.body;
+    const { name, email, avatar, teamId } = request.body;
     
     if (!name) {
       return {
@@ -170,14 +272,31 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
       };
     }
     
+    if (!teamId) {
+      return {
+        success: false,
+        error: 'Team ID is required'
+      };
+    }
+    
     try {
+      // Verify team exists
+      const team = await db.getTeamById(teamId);
+      if (!team) {
+        return {
+          success: false,
+          error: 'Invalid team ID'
+        };
+      }
+      
       // Capitalize first letter of name
       const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
       
       const newMember = await db.createTeamMember({
         name: capitalizedName,
         email,
-        avatar
+        avatar,
+        teamId
       });
       
       return {
@@ -200,6 +319,17 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
       // Capitalize first letter of name if it's being updated
       if (updates.name) {
         updates.name = updates.name.charAt(0).toUpperCase() + updates.name.slice(1);
+      }
+      
+      // Verify team exists if teamId is being updated
+      if (updates.teamId) {
+        const team = await db.getTeamById(updates.teamId);
+        if (!team) {
+          return {
+            success: false,
+            error: 'Invalid team ID'
+          };
+        }
       }
       
       const updated = await db.updateTeamMember(parseInt(id), updates);

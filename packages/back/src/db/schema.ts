@@ -39,11 +39,21 @@ export const usageMetrics = sqliteTable('usage_metrics', {
 });
 
 
+export const teams = sqliteTable('teams', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  
+  // Metadata
+  createdAt: integer('created_at').default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`)
+});
+
 export const teamMembers = sqliteTable('team_members', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   email: text('email'),
   avatar: text('avatar'), // File path for uploaded avatar
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),
@@ -70,6 +80,8 @@ export type Snippet = typeof snippets.$inferSelect;
 export type NewSnippet = typeof snippets.$inferInsert;
 export type UsageMetric = typeof usageMetrics.$inferSelect;
 export type NewUsageMetric = typeof usageMetrics.$inferInsert;
+export type Team = typeof teams.$inferSelect;
+export type NewTeam = typeof teams.$inferInsert;
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type NewTeamMember = typeof teamMembers.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;

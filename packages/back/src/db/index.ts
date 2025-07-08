@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database from 'better-sqlite3';
 import { eq, desc, like, count, sql, and, or } from 'drizzle-orm';
-import { snippets, usageMetrics, apiKeys, teamMembers } from './schema';
-import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, TeamMember, NewTeamMember } from './schema';
+import { snippets, usageMetrics, apiKeys, teams, teamMembers } from './schema';
+import type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, Team, NewTeam, TeamMember, NewTeamMember } from './schema';
 
 export class DrizzleDatabase {
   private db: ReturnType<typeof drizzle>;
@@ -377,6 +377,65 @@ export class DrizzleDatabase {
     return `${prefix}_${timestamp}${random}`;
   }
 
+  // Teams Management
+  async createTeam(teamData: NewTeam): Promise<Team> {
+    const [created] = await this.db.insert(teams).values({
+      ...teamData,
+      createdAt: sql`(unixepoch())`,
+      updatedAt: sql`(unixepoch())`
+    }).returning();
+    return created;
+  }
+
+  async getAllTeams(): Promise<Team[]> {
+    return await this.db.select().from(teams).orderBy(desc(teams.createdAt));
+  }
+
+  async getTeamById(id: number): Promise<Team | null> {
+    const [team] = await this.db.select().from(teams).where(eq(teams.id, id));
+    return team || null;
+  }
+
+  async updateTeam(id: number, updates: Partial<NewTeam>): Promise<Team | null> {
+    const [updated] = await this.db.update(teams)
+      .set({
+        ...updates,
+        updatedAt: sql`(unixepoch())`
+      })
+      .where(eq(teams.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await this.db.delete(teams).where(eq(teams.id, id));
+    return result.changes > 0;
+  }
+
+  async getTeamWithMembers(teamId: number): Promise<any> {
+    const team = await this.getTeamById(teamId);
+    if (!team) return null;
+    
+    const members = await this.db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.teamId, teamId))
+      .orderBy(desc(teamMembers.createdAt));
+    
+    return {
+      ...team,
+      members
+    };
+  }
+
+  async getTeamMembersByTeam(teamId: number): Promise<TeamMember[]> {
+    return await this.db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.teamId, teamId))
+      .orderBy(desc(teamMembers.createdAt));
+  }
+
   // Team Members Management
   async createTeamMember(memberData: NewTeamMember): Promise<TeamMember> {
     const [created] = await this.db.insert(teamMembers).values({
@@ -387,8 +446,20 @@ export class DrizzleDatabase {
     return created;
   }
 
-  async getAllTeamMembers(): Promise<TeamMember[]> {
-    return await this.db.select().from(teamMembers).orderBy(desc(teamMembers.createdAt));
+  async getAllTeamMembers(): Promise<any[]> {
+    const result = await this.db
+      .select({
+        teamMember: teamMembers,
+        team: teams
+      })
+      .from(teamMembers)
+      .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+      .orderBy(desc(teamMembers.createdAt));
+    
+    return result.map(row => ({
+      ...row.teamMember,
+      team: row.team
+    }));
   }
 
   async getTeamMemberById(id: number): Promise<TeamMember | null> {
@@ -416,15 +487,20 @@ export class DrizzleDatabase {
     const result = await this.db
       .select({
         apiKey: apiKeys,
-        teamMember: teamMembers
+        teamMember: teamMembers,
+        team: teams
       })
       .from(apiKeys)
       .leftJoin(teamMembers, eq(apiKeys.teamMemberId, teamMembers.id))
+      .leftJoin(teams, eq(teamMembers.teamId, teams.id))
       .orderBy(desc(apiKeys.createdAt));
 
     return result.map(row => ({
       ...row.apiKey,
-      teamMember: row.teamMember
+      teamMember: row.teamMember ? {
+        ...row.teamMember,
+        team: row.team
+      } : null
     }));
   }
 
@@ -516,5 +592,5 @@ export class DrizzleDatabase {
   }
 }
 
-export { snippets, usageMetrics, apiKeys, teamMembers };
-export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, TeamMember, NewTeamMember };
+export { snippets, usageMetrics, apiKeys, teams, teamMembers };
+export type { Snippet, NewSnippet, UsageMetric, NewUsageMetric, ApiKey, NewApiKey, Team, NewTeam, TeamMember, NewTeamMember };
