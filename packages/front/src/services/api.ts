@@ -1,6 +1,6 @@
 import { Snippet, SearchResponse, UsageMetric, UserStats } from '../types/snippet';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://localhost:3001';
 
 export class ApiService {
     private userId: string;
