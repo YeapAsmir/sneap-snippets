@@ -1,7 +1,7 @@
 'use client'
 // Misc
-import { Stat }                   from '@/app/stat';
 import confetti                   from 'canvas-confetti';
+import { Stat }                   from '@/app/stat';
 import {
     Alert,
     AlertTitle,
@@ -220,13 +220,6 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(createdApiKey)
       setApiKeyCopied(true)
-      
-      // Celebrate successful copy with confetti!
-      confetti({
-        particleCount: 50,
-        spread: 50,
-        origin: { y: 0.7 }
-      })
       
       setTimeout(() => setApiKeyCopied(false), 2000)
     } catch (err) {

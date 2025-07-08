@@ -19,8 +19,7 @@ import {
     Dropdown,
     DropdownItem,
     DropdownMenu,
-    DropdownButton,
-    DropdownDivider
+    DropdownButton
 }                                 from '@/components/dropdown';
 import {
     Field,
@@ -339,18 +338,18 @@ export default function Teams() {
       <div className="mt-8">
         {teams.length === 0 ? (
           <div className="text-center py-12 text-zinc-500">
-            <p className="text-lg font-medium text-zinc-900 mb-2">No teams yet</p>
-            <p>Create your first team to get started.</p>
+            <p className="text-base/6 font-medium text-zinc-900 mb-2">No teams yet</p>
+            <p className='text-sm/6'>Create your first team to get started.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 divide-y divide-zinc-200 dark:divide-zinc-700">
             {teams.map((team) => {
               const teamMembersCount = teamMembers.filter(member => member.teamId === team.id).length;
               const teamMembersList = teamMembers.filter(member => member.teamId === team.id);
               
               return (
                 <div key={team.id}>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Subheading>{team.name}</Subheading>
@@ -358,17 +357,17 @@ export default function Teams() {
                       </div>
                     </div>
                     <Dropdown>
-                      <DropdownButton outline plain aria-label="More options">
+                      <DropdownButton plain aria-label="More options">
                         <EllipsisHorizontalIcon />
                       </DropdownButton>
                       <DropdownMenu anchor="bottom end">
-                        <DropdownItem onClick={() => {
+                        {/* <DropdownItem onClick={() => {
                           setSelectedTeam(team);
                           setIsCreateMemberModalOpen(true);
                         }}>
                           Add Member
                         </DropdownItem>
-                        <DropdownDivider />
+                        <DropdownDivider /> */}
                         <DropdownItem onClick={() => handleDeleteTeam(team)}>
                           Delete Team
                         </DropdownItem>
@@ -403,8 +402,16 @@ export default function Teams() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-zinc-500 text-sm">
-                      No members yet. Add your first team member to get started.
+                    <div className="py-4 text-zinc-500 text-sm">
+                      <p className="mb-3">No members yet. Add your first team member to get started.</p>
+                      <Button 
+                        onClick={() => {
+                          setSelectedTeam(team);
+                          setIsCreateMemberModalOpen(true);
+                        }}
+                      >
+                        Add member
+                      </Button>
                     </div>
                   )}
                 </div>
