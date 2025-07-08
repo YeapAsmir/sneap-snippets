@@ -1,6 +1,7 @@
 'use client'
 // Misc
 import { Stat }                   from '@/app/stat';
+import confetti                   from 'canvas-confetti';
 import {
     Alert,
     AlertTitle,
@@ -184,6 +185,13 @@ export default function Home() {
       // Store the created API key to display
       setCreatedApiKey(newApiKey.keyId)
       
+      // Celebrate with confetti!
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      })
+      
       // Refresh API keys list
       const keysData = await getApiKeys()
       setApiKeys(keysData)
@@ -202,6 +210,14 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(createdApiKey)
       setApiKeyCopied(true)
+      
+      // Celebrate successful copy with confetti!
+      confetti({
+        particleCount: 50,
+        spread: 50,
+        origin: { y: 0.7 }
+      })
+      
       setTimeout(() => setApiKeyCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy API key:', err)
@@ -488,7 +504,7 @@ export default function Home() {
                 
                 <Field>
                   <Label>API Key</Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-2">
                     <Input 
                       readOnly 
                       value={createdApiKey} 

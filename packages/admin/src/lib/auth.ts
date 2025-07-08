@@ -12,7 +12,6 @@ export interface AuthState {
 export interface LoginCredentials {
   username: string;
   password: string;
-  rememberMe: boolean;
 }
 
 export interface AuthResponse {
@@ -79,7 +78,7 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 
     if (response.ok && data.success) {
       // Store tokens
-      setAuthTokens(data.token, credentials.rememberMe ? data.refreshToken : undefined);
+      setAuthTokens(data.token);
       return { success: true, token: data.token, refreshToken: data.refreshToken };
     } else {
       return { success: false, error: data.error || 'Invalid credentials' };

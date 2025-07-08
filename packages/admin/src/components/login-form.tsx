@@ -18,7 +18,6 @@ import { useState }  from 'react';
 export function LoginForm() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
 
   const { login, loading, error, setError } = useAuth()
   const router = useRouter()
@@ -29,8 +28,7 @@ export function LoginForm() {
 
     const response = await login({
       username,
-      password,
-      rememberMe,
+      password
     })
 
     if (response.success) {
@@ -76,11 +74,6 @@ export function LoginForm() {
           required
         />
       </Field>
-
-      <CheckboxField>
-        <Checkbox checked={rememberMe} onChange={(checked) => setRememberMe(checked)} />
-        <Label>Remember me</Label>
-      </CheckboxField>
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? (

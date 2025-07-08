@@ -19,7 +19,8 @@ import {
     Dropdown,
     DropdownItem,
     DropdownMenu,
-    DropdownButton
+    DropdownButton,
+    DropdownDivider
 }                                 from '@/components/dropdown';
 import {
     Field,
@@ -143,10 +144,6 @@ export default function Teams() {
     loadData()
   }, [])
 
-  // Get members for selected team
-  const selectedTeamMembers = selectedTeam 
-    ? teamMembers.filter(member => member.teamId === selectedTeam.id)
-    : []
 
   // Handle team creation
   const handleCreateTeam = async () => {
@@ -338,72 +335,90 @@ export default function Teams() {
     </div>
     
 
-        
-      {/* {teams.length === 0 && (
-        <div className="col-span-full text-center py-12 text-zinc-500">
-          <div className="mx-auto w-12 h-12 bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
-            <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
+      {/* Teams Display Section */}
+      <div className="mt-8">
+        {teams.length === 0 ? (
+          <div className="text-center py-12 text-zinc-500">
+            <div className="mx-auto w-12 h-12 bg-zinc-100 rounded-lg flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium text-zinc-900 mb-2">No teams yet</p>
+            <p>Create your first team to get started.</p>
           </div>
-          <p className="text-lg font-medium text-zinc-900 mb-2">No teams yet</p>
-          <p>Create your first team to get started.</p>
-        </div>
-      )} */}
-
-      {/* Team Members Section */}
-      {selectedTeam && (
-        <>
-          <div className="mt-8 flex items-end justify-between">
-            <Subheading>{selectedTeam.name} Members</Subheading>
-            <Dropdown>
-                    <DropdownButton plain aria-label="More options">
-                      <EllipsisHorizontalIcon />
-                    </DropdownButton>
-            <DropdownMenu anchor="bottom end">
-            <DropdownItem onClick={() => setIsCreateMemberModalOpen(true)}>
-             Add Member
-            </DropdownItem>
-            <DropdownItem>
-              Delete Team
-            </DropdownItem>
-          </DropdownMenu>
-            </Dropdown>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            {selectedTeamMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between gap-4 py-4 border-b border-zinc-950/5">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Avatar 
-                    src={member.avatar}
-                    initials={member.avatar ? undefined : member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    alt={member.name}
-                    className={`size-6 outline-0 border-0 ${!member.avatar ? getAvatarColors(member.name) : ''}`}
-                  />
-                  <div className="min-w-0">
-                    <div className="font-medium text-zinc-900">{member.name}</div>
-                    {member.email && (
-                      <div className="text-sm text-zinc-500">{member.email}</div>
-                    )}
+        ) : (
+          <div className="space-y-6">
+            {teams.map((team) => {
+              const teamMembersCount = teamMembers.filter(member => member.teamId === team.id).length;
+              const teamMembersList = teamMembers.filter(member => member.teamId === team.id);
+              
+              return (
+                <div key={team.id}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Subheading>{team.name}</Subheading>
+                        <span className="text-sm text-zinc-500">({teamMembersCount} members)</span>
+                      </div>
+                    </div>
+                    <Dropdown>
+                      <DropdownButton outline plain aria-label="More options">
+                        <EllipsisHorizontalIcon />
+                      </DropdownButton>
+                      <DropdownMenu anchor="bottom end">
+                        <DropdownItem onClick={() => {
+                          setSelectedTeam(team);
+                          setIsCreateMemberModalOpen(true);
+                        }}>
+                          Add Member
+                        </DropdownItem>
+                        <DropdownDivider />
+                        <DropdownItem onClick={() => handleDeleteTeam(team)}>
+                          Delete Team
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
                   </div>
+                  
+                  {teamMembersList.length > 0 ? (
+                    <div className="space-y-3 text-sm/6">
+                      {teamMembersList.map((member) => (
+                        <div key={member.id} className="flex items-center justify-between gap-4 py-2">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Avatar 
+                              src={member.avatar}
+                              initials={member.avatar ? undefined : member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              alt={member.name}
+                              className={`size-6 outline-0 border-0 ${!member.avatar ? getAvatarColors(member.name) : ''}`}
+                            />
+                            <div className="min-w-0">
+                              <div className="font-medium text-zinc-900">{member.name}</div>
+                              {member.email && (
+                                <div className="text-sm text-zinc-500">{member.email}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex min-w-fit justify-end gap-2">
+                            <Button plain onClick={() => handleDeleteTeamMember(member)} className="text-sm text-red-600">
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-zinc-500 text-sm">
+                      No members yet. Add your first team member to get started.
+                    </div>
+                  )}
                 </div>
-                <div className="flex min-w-fit justify-end gap-2">
-                  <Button plain onClick={() => handleDeleteTeamMember(member)} className="text-sm text-red-600">
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            ))}
-            
-            {selectedTeamMembers.length === 0 && (
-              <div className="text-center py-8 text-zinc-500">
-                No team members yet. Add your first team member to get started.
-              </div>
-            )}
+              );
+            })}
           </div>
-        </>
-      )}
+        )}
+      </div>
+
 
       {/* Create Team Modal */}
       <Dialog size="xl" open={isCreateTeamModalOpen} onClose={handleCloseCreateTeamModal}>

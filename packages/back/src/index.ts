@@ -1,14 +1,10 @@
 // Misc
 import cors                from '@fastify/cors';
 import fastify             from 'fastify';
-import path                from 'path';
-import {
-    AuthService
-}                          from './auth';
+import { AuthService }     from './auth';
 import { DrizzleDatabase } from './db';
-import { SnippetTrie }     from './trie';
 import { adminRoutes }     from './routes/admin';
-import 'dotenv/config';
+import { SnippetTrie }     from './trie';
 
 const server = fastify({
   logger: true,
@@ -85,7 +81,7 @@ server.register(cors, {
 
 // Authentication endpoints
 server.post('/auth/login', async (request: any, reply) => {
-  const { username, password, rememberMe } = request.body;
+  const { username, password } = request.body;
   
   if (!username || !password) {
     return reply.status(400).send({
@@ -108,10 +104,6 @@ server.post('/auth/login', async (request: any, reply) => {
     success: true,
     token: accessToken
   };
-  
-  if (rememberMe) {
-    response.refreshToken = AuthService.generateRefreshToken(username);
-  }
   
   return response;
 });
