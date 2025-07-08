@@ -133,8 +133,12 @@ export default function Home() {
     async function loadStatsForPeriod() {
       try {
         setStatsLoading(true)
-        const adminData = await getAdminStats(period)
+        const [adminData, statsData] = await Promise.all([
+          getAdminStats(period),
+          getStats()
+        ])
         setAdminStats(adminData)
+        setStats(statsData)
       } catch (err: any) {
         setError(err.message || 'Failed to load statistics')
         console.error('Error loading stats for period:', err)
@@ -192,9 +196,15 @@ export default function Home() {
         origin: { y: 0.6 }
       })
       
-      // Refresh API keys list
-      const keysData = await getApiKeys()
+      // Refresh API keys list and stats
+      const [keysData, adminData, statsData] = await Promise.all([
+        getApiKeys(),
+        getAdminStats(period),
+        getStats()
+      ])
       setApiKeys(keysData)
+      setAdminStats(adminData)
+      setStats(statsData)
       
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create API key')
@@ -247,9 +257,15 @@ export default function Home() {
       setDeleteLoading(true)
       await deleteApiKey(keyToDelete.keyId)
       
-      // Refresh API keys list
-      const keysData = await getApiKeys()
+      // Refresh API keys list and stats
+      const [keysData, adminData, statsData] = await Promise.all([
+        getApiKeys(),
+        getAdminStats(period),
+        getStats()
+      ])
       setApiKeys(keysData)
+      setAdminStats(adminData)
+      setStats(statsData)
       
       // Close alert
       setIsDeleteAlertOpen(false)
@@ -274,9 +290,15 @@ export default function Home() {
     try {
       await updateApiKey(keyId, { isActive: !isActive })
       
-      // Refresh API keys list
-      const keysData = await getApiKeys()
+      // Refresh API keys list and stats
+      const [keysData, adminData, statsData] = await Promise.all([
+        getApiKeys(),
+        getAdminStats(period),
+        getStats()
+      ])
       setApiKeys(keysData)
+      setAdminStats(adminData)
+      setStats(statsData)
       
     } catch (err: any) {
       setError(err.message || 'Failed to update API key')
@@ -331,29 +353,29 @@ export default function Home() {
       <div className="mt-4 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
         <Stat 
           title="Total API Keys" 
-          value={stats.totalKeys.toString()} 
-          change={adminStats.comparison ? `${adminStats.comparison.totalKeys.change >= 0 ? '+' : ''}${adminStats.comparison.totalKeys.change.toFixed(1)}%` : undefined}
+          value={stats?.totalKeys?.toString() || '0'} 
+          change={adminStats?.comparison ? `${adminStats.comparison.totalKeys.change >= 0 ? '+' : ''}${adminStats.comparison.totalKeys.change.toFixed(1)}%` : undefined}
           period={period}
           loading={statsLoading}
         />
         <Stat 
           title="Active Keys" 
-          value={stats.activeKeys.toString()} 
-          change={adminStats.comparison ? `${adminStats.comparison.activeKeys.change >= 0 ? '+' : ''}${adminStats.comparison.activeKeys.change.toFixed(1)}%` : undefined}
+          value={stats?.activeKeys?.toString() || '0'} 
+          change={adminStats?.comparison ? `${adminStats.comparison.activeKeys.change >= 0 ? '+' : ''}${adminStats.comparison.activeKeys.change.toFixed(1)}%` : undefined}
           period={period}
           loading={statsLoading}
         />
         <Stat 
           title="Total Usage" 
-          value={stats.totalUsage.toString()} 
-          change={adminStats.comparison ? `${adminStats.comparison.totalUsage.change >= 0 ? '+' : ''}${adminStats.comparison.totalUsage.change.toFixed(1)}%` : undefined}
+          value={stats?.totalUsage?.toString() || '0'} 
+          change={adminStats?.comparison ? `${adminStats.comparison.totalUsage.change >= 0 ? '+' : ''}${adminStats.comparison.totalUsage.change.toFixed(1)}%` : undefined}
           period={period}
           loading={statsLoading}
         />
         <Stat 
           title="Total Snippets" 
-          value={adminStats.snippets.total.toString()} 
-          change={adminStats.comparison ? `${adminStats.comparison.totalSnippets.change >= 0 ? '+' : ''}${adminStats.comparison.totalSnippets.change.toFixed(1)}%` : undefined}
+          value={adminStats?.snippets?.total?.toString() || '0'} 
+          change={adminStats?.comparison ? `${adminStats.comparison.totalSnippets.change >= 0 ? '+' : ''}${adminStats.comparison.totalSnippets.change.toFixed(1)}%` : undefined}
           period={period}
           loading={statsLoading}
         />
@@ -425,7 +447,7 @@ export default function Home() {
                       />
                     )}
                     <div>
-                      <span>{apiKey.userName}</span>
+                      <span>{apiKey.teamMember?.name || apiKey.userName}</span>
                       {apiKey.teamMember?.team && (
                         <div className="text-xs text-zinc-500">{apiKey.teamMember.team.name}</div>
                       )}
@@ -555,9 +577,9 @@ export default function Home() {
       <Alert open={isDeleteAlertOpen} onClose={setIsDeleteAlertOpen}>
         <AlertTitle>Are you sure you want to delete this API key?</AlertTitle>
         <AlertDescription>
-          This action will deactivate and archive the API key assigned to user {keyToDelete?.userName}.
+          This action will permanently delete the API key assigned to user {keyToDelete?.teamMember?.name || keyToDelete?.userName}.
           <Input readOnly value={keyToDelete?.keyId} className="my-3" />
-          The key will be immediately disabled and removed from the active list while preserving historical data and metrics for archival purposes.
+          The key will be immediately and permanently removed from the system. This action cannot be undone.
         </AlertDescription>
         <AlertActions>
           <Button plain onClick={cancelDeleteApiKey} disabled={deleteLoading}>

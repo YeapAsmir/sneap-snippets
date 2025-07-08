@@ -416,9 +416,15 @@ export async function getTeamMembers(teamId?: number): Promise<TeamMember[]> {
 export async function getStats(): Promise<Stats> {
   const keys = await getApiKeys();
   
+  // Filter out system keys for accurate stats
+  const validKeys = keys.filter(key => 
+    key.userName !== 'system' && 
+    key.userName !== 'System'
+  );
+  
   return {
-    totalKeys: keys.length,
-    activeKeys: keys.filter(k => k.isActive).length,
-    totalUsage: keys.reduce((sum, k) => sum + (k.usageCount || 0), 0)
+    totalKeys: validKeys.length,
+    activeKeys: validKeys.filter(k => k.isActive).length,
+    totalUsage: validKeys.reduce((sum, k) => sum + (k.usageCount || 0), 0)
   };
 }

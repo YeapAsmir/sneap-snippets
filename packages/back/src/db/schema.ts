@@ -41,7 +41,7 @@ export const usageMetrics = sqliteTable('usage_metrics', {
 
 export const teams = sqliteTable('teams', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   
   // Metadata
   createdAt: integer('created_at').default(sql`(unixepoch())`),

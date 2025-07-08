@@ -479,6 +479,10 @@ export class DrizzleDatabase {
   }
 
   async deleteTeamMember(id: number): Promise<boolean> {
+    // First, delete all API keys associated with this team member
+    await this.db.delete(apiKeys).where(eq(apiKeys.teamMemberId, id));
+    
+    // Then delete the team member
     const result = await this.db.delete(teamMembers).where(eq(teamMembers.id, id));
     return result.changes > 0;
   }

@@ -7,11 +7,10 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
   server.get('/admin/api-keys', { preHandler: validateJWT }, async (request: any, reply) => {
     try {
       const keysWithMembers = await db.getApiKeysWithTeamMembers();
-      // Filter out system keys and deleted keys
+      // Filter out system keys only
       const filteredKeys = keysWithMembers.filter(key => 
         key.userName !== 'system' && 
-        key.userName !== 'System' &&
-        !key.userName.startsWith('[DELETED]')
+        key.userName !== 'System'
       );
       return {
         success: true,
@@ -123,29 +122,15 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
 
   server.delete('/admin/api-keys/:keyId', { preHandler: validateJWT }, async (request: any, reply) => {
     const { keyId } = request.params;
-    const { force = false } = request.query as { force?: boolean };
     
     try {
-      if (force) {
-        // Perform actual deletion - the foreign key constraints will handle cascading
-        const deleted = await db.deleteApiKey(keyId);
-        
-        return {
-          success: deleted,
-          message: deleted ? 'API key permanently deleted' : 'API key not found'
-        };
-      } else {
-        // Default behavior: deactivate the API key to preserve historical data
-        const updated = await db.updateApiKey(keyId, { 
-          isActive: false,
-          userName: `[DELETED] ${new Date().toISOString().split('T')[0]}` // Mark as deleted with date
-        });
-        
-        return {
-          success: !!updated,
-          message: updated ? 'API key deactivated and archived' : 'API key not found'
-        };
-      }
+      // Perform hard deletion - the foreign key constraints will handle cascading
+      const deleted = await db.deleteApiKey(keyId);
+      
+      return {
+        success: deleted,
+        message: deleted ? 'API key permanently deleted' : 'API key not found'
+      };
     } catch (error: any) {
       return {
         success: false,
@@ -188,6 +173,14 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
         data: newTeam
       };
     } catch (error: any) {
+      // Handle unique constraint violation
+      if (error.message.includes('UNIQUE constraint failed')) {
+        return {
+          success: false,
+          error: 'A team with this name already exists'
+        };
+      }
+      
       return {
         success: false,
         error: error.message
@@ -214,6 +207,14 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
         error: 'Team not found'
       };
     } catch (error: any) {
+      // Handle unique constraint violation
+      if (error.message.includes('UNIQUE constraint failed')) {
+        return {
+          success: false,
+          error: 'A team with this name already exists'
+        };
+      }
+      
       return {
         success: false,
         error: error.message
@@ -466,19 +467,25 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
 
       // Get API keys stats for current and previous periods
       const allKeys = await db.getAllApiKeys();
-      const currentKeys = allKeys.filter(key => 
+      // Filter out system keys for period calculations
+      const validKeysForPeriod = allKeys.filter(key => 
+        key.userName !== 'system' && 
+        key.userName !== 'System'
+      );
+      
+      const currentKeys = validKeysForPeriod.filter(key => 
         key.createdAt && new Date(Number(key.createdAt) * 1000) >= currentPeriodStart
       );
-      const previousKeys = allKeys.filter(key => 
+      const previousKeys = validKeysForPeriod.filter(key => 
         key.createdAt && 
         new Date(Number(key.createdAt) * 1000) >= previousPeriodStart && 
         new Date(Number(key.createdAt) * 1000) < previousPeriodEnd
       );
 
-      // Calculate changes
-      const currentTotalKeys = allKeys.length;
-      const currentActiveKeys = allKeys.filter(k => k.isActive).length;
-      const currentTotalUsage = allKeys.reduce((sum, k) => sum + (k.usageCount || 0), 0);
+      // Calculate changes - use validKeysForPeriod for consistency
+      const currentTotalKeys = validKeysForPeriod.length;
+      const currentActiveKeys = validKeysForPeriod.filter(k => k.isActive).length;
+      const currentTotalUsage = validKeysForPeriod.reduce((sum, k) => sum + (k.usageCount || 0), 0);
 
       // For comparison, we'll use the difference in creation rate
       const keyCreationChange = previousKeys.length > 0 
@@ -486,17 +493,8 @@ export async function adminRoutes(server: FastifyInstance, db: DrizzleDatabase) 
         : currentKeys.length > 0 ? 100 : 0;
 
       // Calculate usage change based on actual periods
-      const currentPeriodUsage = allKeys
-        .filter(key => key.createdAt && new Date(Number(key.createdAt) * 1000) >= currentPeriodStart)
-        .reduce((sum, k) => sum + (k.usageCount || 0), 0);
-      
-      const previousPeriodUsage = allKeys
-        .filter(key => 
-          key.createdAt && 
-          new Date(Number(key.createdAt) * 1000) >= previousPeriodStart && 
-          new Date(Number(key.createdAt) * 1000) < previousPeriodEnd
-        )
-        .reduce((sum, k) => sum + (k.usageCount || 0), 0);
+      const currentPeriodUsage = currentKeys.reduce((sum, k) => sum + (k.usageCount || 0), 0);
+      const previousPeriodUsage = previousKeys.reduce((sum, k) => sum + (k.usageCount || 0), 0);
 
       const usageChange = previousPeriodUsage > 0 
         ? ((currentPeriodUsage - previousPeriodUsage) / previousPeriodUsage) * 100 
